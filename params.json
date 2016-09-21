@@ -1,0 +1,6 @@
+{
+  "name": "Terminaljs",
+  "tagline": "Enable javascript application to change states with command or url",
+  "body": "See App.ts for basic usage.\r\nDocuments is drafting...",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
