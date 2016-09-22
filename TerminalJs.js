@@ -513,7 +513,7 @@ define(["require", "exports"], function (require, exports) {
         TerminalJsFlow.prototype.ValueFormUrl = function (stateName, stateValue) {
             var that = this, TerminalJs = that.TerminalJs, stateVal = TerminalJs.StatesVals[stateName], val;
             if (stateVal != undefined) {
-                val = stateVal.value;
+                val = that.ValueAfter[stateName] === undefined ? stateVal.value : that.ValueAfter[stateName];
                 if (TerminalJs.urlParts[stateName] != stateName + "/" + stateValue) {
                     var type = stateVal.type, types = TerminalJs.StateTypes, valStr = stateValue, nodes;
                     if (stateValue == "") {

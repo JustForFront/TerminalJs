@@ -900,7 +900,7 @@ class TerminalJsFlow{
 
         if(stateVal!=undefined){
 
-            val = stateVal.value
+            val = that.ValueAfter[stateName]===undefined?stateVal.value:that.ValueAfter[stateName]
 
             if(TerminalJs.urlParts[stateName]!=stateName+"/"+stateValue){
 
