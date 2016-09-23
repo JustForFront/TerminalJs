@@ -260,7 +260,9 @@ class TerminalJs{
 
     GetStateValue(stateName:string):any{
 
-        return this.StatesVals[stateName].value
+        var stateVal = this.StatesVals[stateName]
+
+        return stateVal?stateVal.value:undefined
 
     }
 

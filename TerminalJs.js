@@ -163,7 +163,8 @@ define(["require", "exports"], function (require, exports) {
             return this.StatesVals[stateName] != undefined;
         };
         TerminalJs.prototype.GetStateValue = function (stateName) {
-            return this.StatesVals[stateName].value;
+            var stateVal = this.StatesVals[stateName];
+            return stateVal ? stateVal.value : undefined;
         };
         TerminalJs.prototype.parseValType = function (val) {
             var types = this.StateTypes, i;
