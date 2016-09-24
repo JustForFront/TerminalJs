@@ -71,7 +71,7 @@ define(["require", "exports"], function (require, exports) {
             if (OnChanged === void 0) { OnChanged = null; }
             if (isPushUrl === void 0) { isPushUrl = true; }
             if (type === void 0) { type = TerminalJs.StateTypes.Auto; }
-            var oJson = "", that = this, vals = that.StatesVals, onChanged = function (newVal) {
+            var oJson = "", that = this, stateTypes = that.StateTypes, vals = that.StatesVals, onChanged = function (newVal) {
                 if (that.forceMode == "") {
                     oJson = "";
                     that.ToUrl(stateName, newVal, isPushUrl);
@@ -85,13 +85,13 @@ define(["require", "exports"], function (require, exports) {
                     };
                 }
             };
-            if (type == that.StateTypes.Auto) {
+            if (type == stateTypes.Auto) {
                 type = that.parseValType(defaultVal);
             }
             vals[stateName] = new TerminalJsValue(stateName, null, defaultVal, type, isPushUrl, OnChanged ? [OnChanged] : []);
             Object.defineProperty(that.States, stateName, {
                 get: function () {
-                    if (type > 2) {
+                    if (type > stateTypes.Number || type < stateTypes.HiddenNumber) {
                         if (that.forceMode == "") {
                             oJson = JSON.stringify(vals[stateName].value);
                             setTimeout(function () {
@@ -191,6 +191,9 @@ define(["require", "exports"], function (require, exports) {
                 return "";
             }
             var that = this, type = that.StatesVals[stateName].type, types = that.StateTypes, t;
+            if (type < types.Auto) {
+                return "";
+            }
             stateName = stateName == "main" ? "" : stateName + "/";
             switch (type) {
                 case types.String:
@@ -207,8 +210,6 @@ define(["require", "exports"], function (require, exports) {
                     else if (t == undefined || t == "number") {
                         return stateName + stateVal.join(",");
                     }
-                case types.Hidden:
-                    return "";
                 default:
                     var res = [], isTree = true;
                     for (var i in stateVal) {
@@ -236,7 +237,7 @@ define(["require", "exports"], function (require, exports) {
         };
         TerminalJs.prototype.DefaultValToUrl = function () {
             var that = this;
-            that.ForceReplaceUrl(function (state) {
+            that.ForceReplaceUrl(function () {
                 var i, parts = that.urlParts;
                 for (i in that.StatesVals) {
                     if (parts[i] == undefined) {
@@ -388,7 +389,8 @@ define(["require", "exports"], function (require, exports) {
             }
             this.forceUpdateList = null;
         };
-        TerminalJs.StateTypes = { "Auto": -1, "String": 0, "Boolean": 1, "Number": 2, "Object": 3, "Array": 4, "Tree": 5, "Hidden": 6 };
+        TerminalJs.StateTypes = { "HiddenTree": -6, "HiddenArray": -5, "HiddenObject": -4, "HiddenNumber": -3, "HiddenBoolean": -2, "HiddenString": -1,
+            "Auto": 0, "String": 1, "Boolean": 2, "Number": 3, "Object": 4, "Array": 5, "Tree": 6 };
         return TerminalJs;
     }());
     var TerminalJsFlow = (function () {
@@ -476,7 +478,7 @@ define(["require", "exports"], function (require, exports) {
                 }
             }, vals, nodes, params;
             switch (type) {
-                case types.Tree:
+                case types.Tree || types.HiddenTree:
                     params = valStr.split("/");
                     for (i = 0, c = params.length; i < c; i += 2) {
                         vals = params[(i + 1)].substr(1).split(",");
@@ -490,7 +492,7 @@ define(["require", "exports"], function (require, exports) {
                         if (params[(i + 1)].indexOf("-") === 0) {
                             arraySub(nodes, vals);
                         }
-                        else if (params[(i + 1)].indexOf("*") === 0) {
+                        else if (params[(i + 1)].indexOf("+") === 0) {
                             arrayAdd(nodes, vals);
                         }
                         else {
@@ -503,7 +505,7 @@ define(["require", "exports"], function (require, exports) {
                     if (valStr.indexOf("-") === 0) {
                         arraySub(stateNode, vals);
                     }
-                    else if (valStr.indexOf("*") === 0) {
+                    else if (valStr.indexOf("+") === 0) {
                         arrayAdd(stateNode, vals);
                     }
                     else {
@@ -512,7 +514,7 @@ define(["require", "exports"], function (require, exports) {
             }
         };
         TerminalJsFlow.prototype.ValueFormUrl = function (stateName, stateValue) {
-            var that = this, TerminalJs = that.TerminalJs, stateVal = TerminalJs.StatesVals[stateName], val;
+            var that = this, TerminalJs = that.TerminalJs, stateVal = TerminalJs.StatesVals[stateName], val, i, c;
             if (stateVal != undefined) {
                 val = that.ValueAfter[stateName] === undefined ? stateVal.value : that.ValueAfter[stateName];
                 if (TerminalJs.urlParts[stateName] != stateName + "/" + stateValue) {
@@ -520,7 +522,7 @@ define(["require", "exports"], function (require, exports) {
                     if (stateValue == "") {
                         val = null;
                     }
-                    else if (type > 3 && /(?:^[\!\-\*]|\/[\!\-\*])/.test(valStr)) {
+                    else if ((type > types.Number || type < types.HiddenNumber) && /(?:^[\!\-\+]|\/[\!\-\+])/.test(valStr)) {
                         if (val === null || val === undefined) {
                             val = type === 4 ? [] : {};
                         }
@@ -531,7 +533,7 @@ define(["require", "exports"], function (require, exports) {
                     }
                     else {
                         switch (type) {
-                            case types.String:
+                            case types.String || types.HiddenString:
                                 if (valStr.indexOf("!") === 0) {
                                     valStr = decodeURIComponent(valStr.substr(1));
                                     val = valStr == val ? null : valStr;
@@ -540,20 +542,20 @@ define(["require", "exports"], function (require, exports) {
                                     val = decodeURIComponent(valStr ? valStr : null);
                                 }
                                 break;
-                            case types.Number:
+                            case types.Number || types.HiddenNumber:
                                 val = Number(valStr);
                                 break;
-                            case types.Boolean:
+                            case types.Boolean || types.HiddenBoolean:
                                 val = valStr == "toggle" ? !val : valStr == "true";
                                 break;
-                            case types.Array:
+                            case types.Array || types.HiddenArray:
                                 val = valStr ? valStr.split(",").map(decodeURIComponent) : [];
                                 break;
-                            case types.Tree:
+                            case types.Tree || types.HiddenTree:
                                 if (valStr) {
                                     val = val ? val : {};
                                     nodes = valStr.split("/");
-                                    for (var i = 0, c = nodes.length; i < c; i += 2) {
+                                    for (i = 0, c = nodes.length; i < c; i += 2) {
                                         val[nodes[i]] = nodes[(i + 1)] ? nodes[(i + 1)].split(",").map(decodeURIComponent) : [];
                                     }
                                 }
@@ -562,7 +564,9 @@ define(["require", "exports"], function (require, exports) {
                                 }
                                 break;
                             default:
-                                val = JSON.parse(decodeURIComponent(valStr).trim());
+                                if (valStr.indexOf("%7B") == 0 || valStr.indexOf("%5B") == 0) {
+                                    val = JSON.parse(decodeURIComponent(valStr).trim());
+                                }
                         }
                     }
                     that.ValueAfter[stateName] = val;
