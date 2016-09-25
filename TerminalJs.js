@@ -451,7 +451,7 @@ define(["require", "exports"], function (require, exports) {
             }
         };
         TerminalJsFlow.prototype.optionValueFromUrl = function (type, valStr, stateNode) {
-            var that = this.TerminalJs, types = that.StateTypes, i, c, arraySub = function (target, src) {
+            var that = this.TerminalJs, types = that.StateTypes, i, c, res, arraySub = function (target, src) {
                 var i, c, pos;
                 for (i = 0, c = src.length; i < c; i++) {
                     pos = target.indexOf(decodeURIComponent(src[i]));
@@ -514,7 +514,7 @@ define(["require", "exports"], function (require, exports) {
             }
         };
         TerminalJsFlow.prototype.ValueFormUrl = function (stateName, stateValue) {
-            var that = this, TerminalJs = that.TerminalJs, stateVal = TerminalJs.StatesVals[stateName], val, i, c;
+            var that = this, TerminalJs = that.TerminalJs, stateVal = TerminalJs.StatesVals[stateName], val, res, i, c;
             if (stateVal != undefined) {
                 val = that.ValueAfter[stateName] === undefined ? stateVal.value : that.ValueAfter[stateName];
                 if (TerminalJs.urlParts[stateName] != stateName + "/" + stateValue) {
@@ -578,6 +578,16 @@ define(["require", "exports"], function (require, exports) {
             else {
                 that.TerminalJs.PresetStateUrl[stateName] = that.TerminalJs.Keyword + stateName + "/" + stateValue;
             }
+        };
+        TerminalJsFlow.CmdObjectInDepth = function (keyCmd, Obj) {
+            var keys = keyCmd.split("."), i = 0, c = keys.length - 1;
+            for (; i < c; i++) {
+                if (!Obj[keys[i]]) {
+                    Obj[keys[i]] = {};
+                }
+                Obj = Obj[keys[i]];
+            }
+            return { LastKey: keys[c], Object: Obj };
         };
         TerminalJsFlow.CmdSrcs = { Cmd: 1, Url: 0 };
         return TerminalJsFlow;

@@ -678,6 +678,11 @@ class TerminalJs{
 
 }
 
+interface CmdObjectInDepthRes{
+    Object:any
+    LastKey:string|number
+}
+
 class TerminalJsFlow{
 
     static CmdSrcs = {Cmd:1,Url:0}
@@ -790,7 +795,7 @@ class TerminalJsFlow{
 
     optionValueFromUrl(type:number,valStr:string,stateNode:any):void{
 
-        var that = this.TerminalJs,types = that.StateTypes,i,c,
+        var that = this.TerminalJs,types = that.StateTypes,i,c,res:CmdObjectInDepthRes,
             arraySub = function (target:any[],src:any[]) {
 
                 let i,c,pos;
@@ -901,7 +906,7 @@ class TerminalJsFlow{
 
     ValueFormUrl(stateName:string, stateValue:string){
 
-        var that = this,TerminalJs = that.TerminalJs,stateVal = TerminalJs.StatesVals[stateName],val:any,i,c;
+        var that = this,TerminalJs = that.TerminalJs,stateVal = TerminalJs.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,c;
 
         if(stateVal!=undefined){
 
@@ -1002,6 +1007,26 @@ class TerminalJsFlow{
             that.TerminalJs.PresetStateUrl[stateName] = that.TerminalJs.Keyword+stateName+"/"+stateValue
 
         }
+
+    }
+
+    static CmdObjectInDepth(keyCmd:string,Obj):CmdObjectInDepthRes{
+
+        var keys = keyCmd.split("."),i = 0,c = keys.length-1;
+
+        for(;i<c;i++){
+
+            if(!Obj[keys[i]]){
+
+                Obj[keys[i]] = {}
+
+            }
+
+            Obj = Obj[keys[i]]
+
+        }
+
+        return {LastKey:keys[c],Object:Obj}
 
     }
 

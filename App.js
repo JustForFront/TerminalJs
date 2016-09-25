@@ -8,5 +8,11 @@ define(["require", "exports", "TerminalJs"], function (require, exports, Termina
     TerminalJs_1.terminalJs.AddState("title", "TerminalJs", function (value, isBack) {
         document.getElementById("title").innerHTML = value;
     });
+    TerminalJs_1.terminalJs.AddState("testObj", { a: { b: ["123"] } }, function (v) {
+        console.log(v);
+    });
+    setTimeout(function () {
+        TerminalJs_1.terminalJs.ExeCmd("$testObj/a.b/+234");
+    }, 3000);
     TerminalJs_1.terminalJs.MonitorUrl().MonitorDom().Init();
 });
