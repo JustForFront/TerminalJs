@@ -1,3 +1,5 @@
+var log = console.log
+
 class TerminalJs{
 
     static StateTypes = {"HiddenTree":-6,"HiddenArray":-5,"HiddenObject":-4,"HiddenNumber":-3,"HiddenBoolean":-2,"HiddenString":-1,
@@ -40,9 +42,13 @@ class TerminalJs{
 
     Init():TerminalJs{
 
-        var that = this;
+        var that = this,url = that.getCurrentUrl();
 
-        (new TerminalJsFlow(that.getCurrentUrl(),TerminalJsFlow.CmdSrcs.Url)).Start()
+        if(url){
+
+            (new TerminalJsFlow(url,TerminalJsFlow.CmdSrcs.Url)).Start()
+
+        }
 
         that.DefaultValToUrl()
 
@@ -654,10 +660,6 @@ class TerminalJs{
 
             that.PrepareStateUrl(i,stateVals[i].value)
 
-            if(list[i])
-
-                list[i]()
-
         }
 
         that[that.forceMode](that.getFullUrl())
@@ -727,6 +729,12 @@ class TerminalJsFlow{
             for(i in statesValue){
 
                 if(valueAfter[i]==undefined){
+
+                    if(statesValue[i].type<0){
+
+                        continue
+
+                    }
 
                     valueAfter[i] = null
 
@@ -984,9 +992,23 @@ class TerminalJsFlow{
                             break
                         default:
 
+
                             if(valStr.indexOf("%7B")==0||valStr.indexOf("%5B")==0){
 
                                 val = JSON.parse(decodeURIComponent(valStr).trim())
+
+                            }else{
+
+                                val = val?val:{}
+                                nodes = valStr.split("/")
+
+                                for(i=0,c = nodes.length;i<c;i+=2){
+
+                                    res = TerminalJsFlow.CmdObjectInDepth(nodes[i],val)
+
+                                    res.Object[res.LastKey] = nodes[(i+1)]
+
+                                }
 
                             }
 
