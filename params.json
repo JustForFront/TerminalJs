@@ -1,6 +1,6 @@
 {
   "name": "Terminaljs",
   "tagline": "Enable javascript application to change states with command or url",
-  "body": "See App.ts for basic usage.\r\nDocuments is drafting...",
+  "body": "# TerminalJs\r\n\r\nTerminalJs enable javascript applications to change states with command or url\r\n\r\nSee App.ts for basic usage.\r\n\r\n## Roadmap\r\n\r\n* 2016-09 wk 5 Unit testes\r\n* 2016-10 wk 1 Command tracer\r\n* 2016-10 wk 2 Document\r\n* 2016-10 wk 3 1.0 Beta\r\n",
   "note": "Don't delete this file! It's used internally to help with page regeneration."
 }
