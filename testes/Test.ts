@@ -1,11 +1,15 @@
-import {StateTest} from "./testScripts/state";
+import {UnitTest} from "./testScripts/unit";
+import {terminalJs} from "../TerminalJs";
 
 history.replaceState({},"","/testes/index.html")
 
-var terminalJs = StateTest()
 
+UnitTest()
+
+// var terminalJs = StateTest()
+//
 terminalJs.UrlSpiltter = "/testes/index.html";
-
-console.log(terminalJs)
-
+//
+// console.log(terminalJs)
+//
 terminalJs.MonitorDom().MonitorUrl().Init()

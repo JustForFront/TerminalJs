@@ -13,19 +13,19 @@ class TerminalJs{
     urlParts:{[key:string]:string} = {}
     history:string[] = []
     historyPosition:number = 0
-    private callbacks:((val:any,isBack:boolean,stateName:string)=>void)[] = [];
-    private callbackCount:number = 0;
-    private forceMode:string = ""
-    private forceUpdateList:{[key:string]:()=>void} = {}
-    private currentUrl:string
-    private incomingUrl:string
-    private hashNumber:number = 0
-    private initalized:boolean = false
+    /*private*/ callbacks:((val:any,isBack:boolean,stateName:string)=>void)[] = [];
+    /*private*/ callbackCount:number = 0;
+    /*private*/ forceMode:string = ""
+    /*private*/ forceUpdateList:{[key:string]:()=>void} = {}
+    /*private*/ currentUrl:string
+    /*private*/ incomingUrl:string
+    /*private*/ hashNumber:number = 0
+    /*private*/ initalized:boolean = false
 
     constructor(){}
 
     UrlParams(url:string=location.href):{[key:string]:any} {
-        var q = url.split("?"),query_string = {},query = q.length==1?"":q[1].substring(1),vars = query.split("&");
+        var q = url.split("?"),query_string = {},query = q.length==1?"":q[1],vars = query.split("&");
         for (var i=0;i<vars.length;i++) {
             let pair = vars[i].split("=");
             if (typeof query_string[pair[0]] === "undefined") {
@@ -42,7 +42,7 @@ class TerminalJs{
 
     Init():TerminalJs{
 
-        var that = this,url = that.getCurrentUrl();
+        var url = this.getCurrentUrl();
 
         if(url){
 
@@ -50,33 +50,19 @@ class TerminalJs{
 
         }
 
-        that.DefaultValToUrl()
+        this.DefaultValToUrl()
 
-        that.initalized = true
+        this.initalized = true
 
-        return that
+        return this
 
     }
 
-    historyHandler(newUrl:string,flow:TerminalJsFlow=null):boolean{
+    historyHandler(newUrl:string,presetDirection:number=0):boolean{
 
-        var that = this,isBack = false,list = that.history,pos = that.historyPosition,l=list.length;
+        var isBack = presetDirection===-1,list = this.history,pos = this.historyPosition,l=list.length;
 
-        that.incomingUrl = newUrl
-
-        if(flow&&flow.PresetDirection!==0){
-
-            isBack = flow.PresetDirection===-1
-
-        }else if(l>pos&&list[pos+1]==newUrl){
-
-            isBack = true
-
-        }else if(pos==l-1){
-
-            isBack = newUrl.length>that.currentUrl.length
-
-        }
+        this.incomingUrl = newUrl
 
         if(isBack){
 
@@ -86,11 +72,20 @@ class TerminalJs{
 
             }
 
-            that.historyPosition++;
+            this.historyPosition++;
 
         }else{
 
+            if(pos!=0){
+
+                this.historyPosition = 0
+                list.splice(0,pos)
+
+            }
+
             list.unshift(newUrl)
+
+
 
         }
 
@@ -100,9 +95,9 @@ class TerminalJs{
 
     AddState(stateName:string,defaultVal:any=null,OnChanged:(newVal:any,isBack:boolean,name:string)=>void=null,isPushUrl:boolean=true,type:number=TerminalJs.StateTypes.Auto):TerminalJs{
 
-        var oJson = "",that = this,stateTypes = that.StateTypes,vals = that.StatesVals,onChanged = function (newVal:any) {
+        var oJson = "",that = this,stateTypes = this.StateTypes,vals = this.StatesVals,onChanged = function (newVal:any) {
 
-            if(that.forceMode==""){
+            if(this.forceMode==""){
 
                 oJson = ""
 
@@ -110,7 +105,9 @@ class TerminalJs{
 
                 if(OnChanged){
 
-                    OnChanged(newVal,that.historyHandler(that.currentUrl),stateName)
+                    OnChanged(newVal,that.historyHandler(that.currentUrl,1),stateName)
+
+                    that.Callback(stateName,newVal,false)
 
                 }
 
@@ -128,13 +125,13 @@ class TerminalJs{
 
         if(type==stateTypes.Auto){
 
-            type = that.parseValType(defaultVal)
+            type = this.parseValType(defaultVal)
 
         }
 
         vals[stateName] = new TerminalJsValue(stateName,null,defaultVal,type,isPushUrl,OnChanged?[OnChanged]:[])
 
-        Object.defineProperty(that.States, stateName, {
+        Object.defineProperty(this.States, stateName, {
             get: function () {
 
                 if(type>stateTypes.Number||type<stateTypes.HiddenNumber){
@@ -182,9 +179,9 @@ class TerminalJs{
             configurable: true
         });
 
-        if(that.initalized){
+        if(this.initalized){
 
-            let isPush = isPushUrl,preUrl = that.PresetStateUrl[stateName];
+            let isPush = isPushUrl,preUrl = this.PresetStateUrl[stateName];
 
             vals[stateName].isPushUrl = isPushUrl = false
 
@@ -194,7 +191,7 @@ class TerminalJs{
 
             }else{
 
-                that.States[stateName] = defaultVal
+                this.States[stateName] = defaultVal
 
             }
 
@@ -202,22 +199,20 @@ class TerminalJs{
 
         }
 
-        return that
+        return this
 
     }
 
     AddCallback(stateNameStartToAll:string,callback:(val:any,isBack:boolean,stateName:string)=>void){
 
-        var that = this;
-
         if(stateNameStartToAll=="*"){
 
-            that.callbacks.push(callback)
-            that.callbackCount++;
+            this.callbacks.push(callback)
+            this.callbackCount++;
 
         }else{
 
-            that.StatesVals[stateNameStartToAll].AddCallback(callback)
+            this.StatesVals[stateNameStartToAll].AddCallback(callback)
 
         }
 
@@ -225,17 +220,15 @@ class TerminalJs{
 
     RemoveCallback(stateNameStartToAll:string,callback:(val:any,isBack:boolean,stateName:string)=>void){
 
-        var that = this;
-
         if(stateNameStartToAll=="*"){
 
-            that.callbacks.splice(that.callbacks.indexOf(callback),1)
+            this.callbacks.splice(this.callbacks.indexOf(callback),1)
 
-            that.callbackCount--;
+            this.callbackCount--;
 
         }else{
 
-            that.StatesVals[stateNameStartToAll].RemoveCallback(callback)
+            this.StatesVals[stateNameStartToAll].RemoveCallback(callback)
 
         }
 
@@ -243,11 +236,11 @@ class TerminalJs{
 
     Callback(stateName:string,val:any,isBack:any){
 
-        var that = this,i,callbacks;
+        var i,callbacks;
 
-        if(that.callbackCount){
+        if(this.callbackCount){
 
-            callbacks = that.callbacks;
+            callbacks = this.callbacks;
 
             for(i in callbacks){
 
@@ -273,7 +266,7 @@ class TerminalJs{
 
     }
 
-    private parseValType(val:any):number{
+    /*private*/ parseValType(val:any):number{
 
         var types = this.StateTypes,i;
 
@@ -304,7 +297,7 @@ class TerminalJs{
 
     }
 
-    private formatValUrl(stateName:string,stateVal:any):string{
+    /*private*/ formatValUrl(stateName:string,stateVal:any):string{
 
         if(stateVal===null||stateVal===undefined){
 
@@ -312,7 +305,7 @@ class TerminalJs{
 
         }
 
-        let that = this,type = that.StatesVals[stateName].type,types = that.StateTypes,t;
+        var type = this.StatesVals[stateName].type,types = this.StateTypes,t;
 
         if(type<types.Auto){
 
@@ -326,7 +319,7 @@ class TerminalJs{
 
             case types.String:
 
-                return stateName+stateVal.replace(/^\/|\/$/,"")+""
+                return stateName+this.encodeKeyword(stateVal.replace(/^\/|\/$/g,""))+""
 
             case types.Number:
 
@@ -382,7 +375,8 @@ class TerminalJs{
 
     }
 
-    private getFullUrl():string{
+
+    /*private*/ getFullUrl():string{
 
         var parts = this.urlParts,url:string[] = [],keyword = this.Keyword;
 
@@ -402,15 +396,15 @@ class TerminalJs{
 
         var that = this;
 
-        that.ForceReplaceUrl(function () {
+        this.ForceReplaceUrl(function () {
 
-            let i,parts = that.urlParts;
+            let i,parts = that.urlParts,vals = that.StatesVals;
 
-            for(i in that.StatesVals){
+            for(i in vals){
 
                 if(parts[i]==undefined){
 
-                    that.forceUpdateList[i] = that.StatesVals[i].SetDefault()
+                    that.forceUpdateList[i] = vals[i].SetDefault()
 
                 }
 
@@ -468,7 +462,7 @@ class TerminalJs{
 
     MonitorDom(dom:HTMLElement=document.body):TerminalJs{
 
-        var that = this;
+        var that = this,keyword = that.Keyword;
 
         dom.addEventListener("click",function (e:Event) {
 
@@ -485,11 +479,11 @@ class TerminalJs{
 
                 }
 
-                var url : string = dom.getAttribute("href");
+                var url : string = dom.getAttribute("href"),classlist = dom.classList;
 
-                if(!dom.classList.contains("external")){
+                if(!classlist.contains("external")){
 
-                    if(url.indexOf("/")==0||url.indexOf(that.Keyword)==0||
+                    if(url.indexOf("/")==0||url.indexOf(keyword)==0||
                         (
                             url.indexOf("://")!==-1&&
                             url.indexOf("http://")!==0&&
@@ -499,7 +493,7 @@ class TerminalJs{
                             url.indexOf("//")!==0
                         )){
 
-                        that.ExeCmd(url,dom.classList.contains("back"))
+                        that.ExeCmd(url,classlist.contains("back"))
 
                         return false
 
@@ -517,7 +511,7 @@ class TerminalJs{
 
         })
 
-        return that
+        return this
 
     }
 
@@ -529,7 +523,8 @@ class TerminalJs{
 
     MonitorUrl():TerminalJs{
 
-        var that = this,checkDirection = function (hashStr:string):number {
+        var that = this,hashRx = new RegExp("\\"+this.Keyword+"([0-9]+)$"),
+            checkDirection = function (hashStr:string):number {
 
             let res:number;
 
@@ -558,7 +553,7 @@ class TerminalJs{
 
             if(that.currentUrl!=url){
 
-                params = (new RegExp("\\"+that.Keyword+"([0-9]+)$")).exec(url);
+                params = hashRx.exec(url);
 
                 (new TerminalJsFlow(url,TerminalJsFlow.CmdSrcs.Url,checkDirection(params?params[1]:null))).Start()
 
@@ -566,54 +561,50 @@ class TerminalJs{
 
         }
 
-        return that
+        return this
 
     }
 
     ProcessFlow(flow:TerminalJsFlow){
 
-        var that = this,url;
+        var url;
 
         if(flow.Src==TerminalJsFlow.CmdSrcs.Cmd){
 
-            url = that.getFullUrl()
+            url = this.getFullUrl()
 
             if(flow.IsPushUrl){
 
-                that.pushUrl(url)
+                this.pushUrl(url)
 
             }else{
 
-                that.replaceUrl(url)
+                this.replaceUrl(url)
 
             }
 
         }else{
 
-            url = that.currentUrl = flow.Url
+            url = this.currentUrl = flow.Url
 
         }
 
-        flow.DoChangeCallbacks(that.historyHandler(url,flow))
+        flow.DoChangeCallbacks(this.historyHandler(url,flow.PresetDirection))
 
     }
 
-    private pushUrl(url:string){
+    /*private*/ pushUrl(url:string){
 
-        var that = this;
+        this.hashNumber++
 
-        that.hashNumber++
-
-        history.pushState({},document.title,this.UrlSpiltter+url+that.Keyword+that.hashNumber)
+        history.pushState({},document.title,this.UrlSpiltter+url+this.Keyword+this.hashNumber)
 
 
     }
 
-    private replaceUrl(url:string){
+    /*private*/ replaceUrl(url:string){
 
-        var that = this;
-
-        history.replaceState({},document.title,that.UrlSpiltter+url+(that.hashNumber?that.Keyword+that.hashNumber:""))
+        history.replaceState({},document.title,this.UrlSpiltter+url+(this.hashNumber?this.Keyword+this.hashNumber:""))
 
     }
 
@@ -629,12 +620,10 @@ class TerminalJs{
 
     }
 
-    private forceMod(mode:string,urlOrModfunc:(state:any)=>void|string){
+    /*private*/ forceMod(mode:string,urlOrModfunc:(state:any)=>void|string){
 
-        var that = this;
-
-        that.forceMode = mode
-        that.forceUpdateList = {}
+        this.forceMode = mode
+        this.forceUpdateList = {}
 
         if(typeof urlOrModfunc=="string"){
 
@@ -644,25 +633,25 @@ class TerminalJs{
 
             urlOrModfunc(this.States)
 
-            that.forceUpdateUrl()
+            this.forceUpdateUrl()
 
         }
 
-        that.forceMode = ""
+        this.forceMode = ""
 
     }
 
     forceUpdateUrl(){
 
-        var that = this,list = that.forceUpdateList,i,stateVals = that.StatesVals;
+        var that = this,list = this.forceUpdateList,i,stateVals = this.StatesVals;
 
         for(i in list){
 
-            that.PrepareStateUrl(i,stateVals[i].value)
+            this.PrepareStateUrl(i,stateVals[i].value)
 
         }
 
-        that[that.forceMode](that.getFullUrl())
+        that[this.forceMode](this.getFullUrl())
 
         for(i in list){
 
@@ -675,6 +664,22 @@ class TerminalJs{
         }
 
         this.forceUpdateList = null
+
+    }
+
+    encodeKeyword(str:string):string {
+
+        var keyword = this.Keyword,rx = new RegExp("\\"+keyword,"g");
+
+        return str.replace(rx,encodeURIComponent(keyword))
+
+    }
+
+    decodeKeyword(str:string):string {
+
+        var keyword = this.Keyword,rx = new RegExp("\\"+encodeURIComponent(keyword),"g");
+
+        return str.replace(rx,keyword)
 
     }
 
@@ -694,16 +699,14 @@ class TerminalJsFlow{
     IsPushUrl:boolean = false
     PresetDirection:number
     ValueAfter:{[stateName:string]:any} = {}
-    private TerminalJs:TerminalJs
+    /*private*/ TerminalJs:TerminalJs
 
     constructor(url:string,src:number,presetDirection:number=0){
 
-        var that = this;
-
-        that.Url = url
-        that.Src = src
-        that.PresetDirection = presetDirection
-        that.TerminalJs = terminalJs
+        this.Url = url
+        this.Src = src
+        this.PresetDirection = presetDirection
+        this.TerminalJs = terminalJs
 
     }
 
@@ -711,20 +714,20 @@ class TerminalJsFlow{
 
         var that = this
 
-        that.parseValue()
+        this.parseValue()
 
-        that.applyValueAndSetIfPush(forceMod)
+        this.applyValueAndSetIfPush(forceMod)
 
-        that.TerminalJs.ProcessFlow(that)
+        this.TerminalJs.ProcessFlow(that)
 
     }
 
     applyValueAndSetIfPush(forceMod:string) {
 
-        var that = this, statesValue = that.TerminalJs.StatesVals,
-            valueAfter = that.ValueAfter, i, isPush = false;
+        var statesValue = this.TerminalJs.StatesVals,
+            valueAfter = this.ValueAfter, i, isPush = false;
 
-        if (that.Src == TerminalJsFlow.CmdSrcs.Url) {
+        if (this.Src == TerminalJsFlow.CmdSrcs.Url) {
 
             for(i in statesValue){
 
@@ -744,7 +747,7 @@ class TerminalJsFlow{
 
                 isPush = isPush||statesValue[i].isPushUrl
 
-                that.TerminalJs.PrepareStateUrl(i,valueAfter[i])
+                this.TerminalJs.PrepareStateUrl(i,valueAfter[i])
 
             }
 
@@ -756,19 +759,19 @@ class TerminalJsFlow{
 
                 isPush = isPush||statesValue[i].isPushUrl
 
-                that.TerminalJs.PrepareStateUrl(i,valueAfter[i])
+                this.TerminalJs.PrepareStateUrl(i,valueAfter[i])
 
             }
 
         }
 
-        that.IsPushUrl = forceMod==""?isPush:(forceMod=="replaceUrl"?false:true)
+        this.IsPushUrl = forceMod==""?isPush:(forceMod=="replaceUrl"?false:true)
 
     }
 
     DoChangeCallbacks(isBack:boolean){
 
-        var that = this,statesValue = that.TerminalJs.StatesVals,valueAfter = that.ValueAfter,i;
+        var statesValue = this.TerminalJs.StatesVals,valueAfter = this.ValueAfter,i;
 
         for(i in valueAfter){
 
@@ -776,26 +779,30 @@ class TerminalJsFlow{
 
                 statesValue[i].callback(valueAfter[i],isBack)
 
+                terminalJs.Callback(i,valueAfter[i],isBack)
+
             }
 
         }
+
+
 
     }
 
     parseValue(){
 
-        var that = this,url = that.Url,keyword = that.TerminalJs.Keyword,rx = new RegExp("(\\"+keyword+"([^\/]+)\/([^\\"+keyword+"]*))","g"),
+        var url = this.Url,keyword = this.TerminalJs.Keyword,rx = new RegExp("(\\"+keyword+"([^\/]+)\/([^\\"+keyword+"]*))","g"),
             match,urls = url.split(keyword);
 
         if(urls[0]){
 
-            that.ValueFormUrl("main",urls[0].replace(/^\/|\/$/g,""))
+            this.ValueFormUrl("main",urls[0].replace(/^\/|\/$/g,""))
 
         }
 
         while((match = rx.exec(url))!=null){
 
-            that.ValueFormUrl(match[2],match[3].replace(/\/$/,""))
+            this.ValueFormUrl(match[2],match[3].replace(/\/$/,""))
 
         }
 
@@ -803,7 +810,7 @@ class TerminalJsFlow{
 
     optionValueFromUrl(type:number,valStr:string,stateNode:any):void{
 
-        var that = this.TerminalJs,types = that.StateTypes,i,c,res:CmdObjectInDepthRes,
+        var types =  this.TerminalJs.StateTypes,i,c,res:CmdObjectInDepthRes,
             arraySub = function (target:any[],src:any[]) {
 
                 let i,c,pos;
@@ -891,6 +898,45 @@ class TerminalJsFlow{
 
                 break
 
+            case types.Object||types.HiddenObject:
+
+                params = valStr.split("/")
+
+                for(i=0,c=params.length;i<c;i+=2){
+
+                    vals = params[(i+1)].substr(1).split(",")
+
+                    res = TerminalJsFlow.CmdObjectInDepth(params[i],stateNode)
+
+                    if(res.Object[res.LastKey]){
+
+                        nodes = res.Object[res.LastKey]
+
+                    }else{
+
+                        nodes = []
+                        res.Object[res.LastKey] = nodes
+
+                    }
+
+                    if(params[(i+1)].indexOf("-")===0){
+
+                        arraySub(nodes,vals)
+
+                    }else if(params[(i+1)].indexOf("*")===0){
+
+                        arrayAdd(nodes,vals)
+
+                    }else{
+
+                        arrayToggle(nodes,vals)
+
+                    }
+
+                }
+
+                break
+
             default:
                 vals = valStr.substr(1).split(",")
 
@@ -914,11 +960,11 @@ class TerminalJsFlow{
 
     ValueFormUrl(stateName:string, stateValue:string){
 
-        var that = this,TerminalJs = that.TerminalJs,stateVal = TerminalJs.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,c;
+        var TerminalJs = this.TerminalJs,stateVal = TerminalJs.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,c;
 
         if(stateVal!=undefined){
 
-            val = that.ValueAfter[stateName]===undefined?stateVal.value:that.ValueAfter[stateName]
+            val = this.ValueAfter[stateName]===undefined?stateVal.value:this.ValueAfter[stateName]
 
             if(TerminalJs.urlParts[stateName]!=stateName+"/"+stateValue){
 
@@ -956,7 +1002,7 @@ class TerminalJsFlow{
 
                             }else{
 
-                                val = decodeURIComponent(valStr?valStr:null)
+                                val = terminalJs.decodeKeyword(decodeURIComponent(valStr?valStr:null))
 
                             }
 
@@ -1016,17 +1062,17 @@ class TerminalJsFlow{
 
                 }
 
-                that.ValueAfter[stateName] = val
+                this.ValueAfter[stateName] = val
 
-            }else if(that.Src==TerminalJsFlow.CmdSrcs.Url){
+            }else if(this.Src==TerminalJsFlow.CmdSrcs.Url){
 
-                that.ValueAfter[stateName] = val
+                this.ValueAfter[stateName] = val
 
             }
 
         }else{
 
-            that.TerminalJs.PresetStateUrl[stateName] = that.TerminalJs.Keyword+stateName+"/"+stateValue
+            this.TerminalJs.PresetStateUrl[stateName] = this.TerminalJs.Keyword+stateName+"/"+stateValue
 
         }
 
@@ -1061,23 +1107,21 @@ class TerminalJsValue{
     default:any
     type:number
     isPushUrl:boolean
-    private callbacks:((newVal:any,isBack:boolean,name:string)=>void)[]
-    private callbackCount = 0
+    /*private*/ callbacks:((newVal:any,isBack:boolean,name:string)=>void)[]
+    /*private*/ callbackCount = 0
 
     constructor(name:string,value:any,defaultValue:any,type:number,isPushUrl:boolean,callbacks:((newVal:any,isBack:boolean,name:string)=>void)[]){
 
-        var that = this;
-
-        that.name = name
-        that.value = value
-        that.callbacks = callbacks
-        that.default = defaultValue
-        that.isPushUrl = isPushUrl
-        that.type = type
+        this.name = name
+        this.value = value
+        this.callbacks = callbacks
+        this.default = defaultValue
+        this.isPushUrl = isPushUrl
+        this.type = type
 
         if(callbacks){
 
-            that.callbackCount = 1
+            this.callbackCount = 1
 
         }
 
@@ -1085,12 +1129,12 @@ class TerminalJsValue{
 
     callback(newVal:any,isBack:boolean){
 
-        var that = this,callbacks,i,c,name;
+        var callbacks,i,c,name;
 
-        if(that.callbackCount){
+        if(this.callbackCount){
 
-            callbacks = that.callbacks
-            name = that.name
+            callbacks = this.callbacks
+            name = this.name
 
             for(i=0,c=callbacks.length;i<c;i++){
 
@@ -1104,21 +1148,17 @@ class TerminalJsValue{
 
     AddCallback(callback:(newVal:any,isBack:boolean,name:string)=>void){
 
-        var that = this;
+        this.callbacks.push(callback)
 
-        that.callbacks.push(callback)
-
-        that.callbackCount++
+        this.callbackCount++
 
     }
 
     RemoveCallback(callback:(newVal:any,isBack:boolean,name:string)=>void){
 
-        var that = this;
+        this.callbacks.splice(this.callbacks.indexOf(callback),1)
 
-        that.callbacks.splice(that.callbacks.indexOf(callback),1)
-
-        that.callbackCount--
+        this.callbackCount--
 
     }
 
@@ -1126,15 +1166,15 @@ class TerminalJsValue{
 
         var that = this;
 
-        if(typeof that.default=="function"){
+        if(typeof this.default=="function"){
 
-            that.checkValue()
+            this.checkValue()
 
             return null
 
         }else{
 
-            that.value = that.default
+            this.value = this.default
 
             return function () {
 
@@ -1146,11 +1186,11 @@ class TerminalJsValue{
 
     }
 
-    private checkValue(){
+    /*private*/ checkValue(){
 
         var that = this;
 
-        that.default(function (res:any,retryTime:number) {
+        this.default(function (res:any,retryTime:number) {
 
             that.value = res
             that.callback(res,false)
