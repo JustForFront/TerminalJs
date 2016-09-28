@@ -4,6 +4,7 @@ class TerminalJs{
 
     static StateTypes = {"HiddenTree":-6,"HiddenArray":-5,"HiddenObject":-4,"HiddenNumber":-3,"HiddenBoolean":-2,"HiddenString":-1,
         "Auto":0,"String":1,"Boolean":2,"Number":3,"Object":4,"Array":5,"Tree":6}
+    static ForceModes = {Replace:"replaceUrl",Push:"pushUrl",Auto:""}
     StateTypes = TerminalJs.StateTypes
     States:any = {}
     StatesVals:{[stateName:string]:TerminalJsValue} = {}
@@ -16,7 +17,7 @@ class TerminalJs{
     /*private*/ callbacks:((val:any,isBack:boolean,stateName:string)=>void)[] = [];
     /*private*/ callbackCount:number = 0;
     /*private*/ forceMode:string = ""
-    /*private*/ forceUpdateList:{[key:string]:()=>void} = {}
+    /*private*/ forceUpdateList:{[key:string]:(isBack:boolean)=>void} = {}
     /*private*/ currentUrl:string
     /*private*/ incomingUrl:string
     /*private*/ hashNumber:number = 0
@@ -42,7 +43,7 @@ class TerminalJs{
 
     Init():TerminalJs{
 
-        var url = this.getCurrentUrl();
+        var url = this.getUrl();
 
         if(url){
 
@@ -103,19 +104,17 @@ class TerminalJs{
 
                 that.ToUrl(stateName,newVal,isPushUrl)
 
-                if(OnChanged){
+                vals[stateName].callback(newVal,that.historyHandler(that.currentUrl,1))
 
-                    OnChanged(newVal,that.historyHandler(that.currentUrl,1),stateName)
-
-                    that.Callback(stateName,newVal,false)
-
-                }
+                that.Callback(stateName,newVal,false)
 
             }else{
 
-                that.forceUpdateList[stateName] = function () {
+                that.forceUpdateList[stateName] = function (isBack:boolean) {
 
-                    OnChanged(newVal,false,stateName)
+                    vals[stateName].callback(newVal,isBack)
+
+                    that.Callback(stateName,newVal,isBack)
 
                 }
 
@@ -152,9 +151,11 @@ class TerminalJs{
 
                     }else{
 
-                        that.forceUpdateList[stateName] = function () {
+                        that.forceUpdateList[stateName] = function (isBack:boolean) {
 
-                            OnChanged(vals[stateName].value,false,stateName)
+                            vals[stateName].callback(vals[stateName].value,isBack)
+
+                            that.Callback(stateName,vals[stateName].value,isBack)
 
                         }
 
@@ -203,7 +204,7 @@ class TerminalJs{
 
     }
 
-    AddCallback(stateNameStartToAll:string,callback:(val:any,isBack:boolean,stateName:string)=>void){
+    AddCallback(stateNameStartToAll:string,callback:(val:any,isBack:boolean,stateName:string)=>void):TerminalJs{
 
         if(stateNameStartToAll=="*"){
 
@@ -216,9 +217,11 @@ class TerminalJs{
 
         }
 
+        return this
+
     }
 
-    RemoveCallback(stateNameStartToAll:string,callback:(val:any,isBack:boolean,stateName:string)=>void){
+    RemoveCallback(stateNameStartToAll:string,callback:(val:any,isBack:boolean,stateName:string)=>void):TerminalJs{
 
         if(stateNameStartToAll=="*"){
 
@@ -232,11 +235,14 @@ class TerminalJs{
 
         }
 
+        return this
+
     }
 
     Callback(stateName:string,val:any,isBack:any){
 
         var i,callbacks;
+
 
         if(this.callbackCount){
 
@@ -452,9 +458,9 @@ class TerminalJs{
 
     }
 
-    getCurrentUrl():string{
+    getUrl(url:string = location.href):string{
 
-        var urls = location.href.split(this.UrlSpiltter)
+        var urls = url.split(this.UrlSpiltter)
 
         return urls.length==1?"":urls.slice(1).join(this.UrlSpiltter)
 
@@ -466,12 +472,12 @@ class TerminalJs{
 
         dom.addEventListener("click",function (e:Event) {
 
-            e.preventDefault();
-            e.stopPropagation();
-
             var dom : Element = <Element>e.target
 
             if (dom && dom.matches("a,a *")) {
+
+                e.preventDefault();
+                e.stopPropagation();
 
                 while ( dom.tagName!="A"){
 
@@ -499,11 +505,9 @@ class TerminalJs{
 
                     }
 
-                }else{
-
-                    location.href = url
-
                 }
+
+                location.href = url
 
             }
 
@@ -515,9 +519,9 @@ class TerminalJs{
 
     }
 
-    ExeCmd(cmd:string,isBack:boolean=false){
+    ExeCmd(cmd:string,isBack:boolean=false,forceMode:string=TerminalJs.ForceModes.Auto){
 
-        (new TerminalJsFlow(cmd,TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Start()
+        (new TerminalJsFlow(cmd,TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Start(forceMode)
 
     }
 
@@ -549,7 +553,7 @@ class TerminalJs{
 
         window.onpopstate = function () {
 
-            let url = that.getCurrentUrl(),params:string[];
+            let url = that.getUrl(),params:string[];
 
             if(that.currentUrl!=url){
 
@@ -608,32 +612,32 @@ class TerminalJs{
 
     }
 
-    ForcePushUrl(urlOrModfunc:(state:any)=>void|string):void{
+    ForcePushUrl(urlOrModfunc:(state:any)=>void|string,isBack=false):void{
 
-        this.forceMod("pushUrl",urlOrModfunc)
-
-    }
-
-    ForceReplaceUrl(urlOrModfunc:(state:any)=>void|string):void{
-
-        this.forceMod("replaceUrl",urlOrModfunc)
+        this.forceMod("pushUrl",urlOrModfunc,isBack)
 
     }
 
-    /*private*/ forceMod(mode:string,urlOrModfunc:(state:any)=>void|string){
+    ForceReplaceUrl(urlOrModfunc:(state:any)=>void|string,isBack=false):void{
+
+        this.forceMod("replaceUrl",urlOrModfunc,isBack)
+
+    }
+
+    /*private*/ forceMod(mode:string,urlOrModfunc:(state:any)=>void|string,isBack=false){
 
         this.forceMode = mode
         this.forceUpdateList = {}
 
         if(typeof urlOrModfunc=="string"){
 
-            (new TerminalJsFlow(String(urlOrModfunc),TerminalJsFlow.CmdSrcs.Cmd)).Start(mode)
+            (new TerminalJsFlow(String(urlOrModfunc),TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Start(mode)
 
         }else{
 
             urlOrModfunc(this.States)
 
-            this.forceUpdateUrl()
+            this.forceUpdateUrl(isBack)
 
         }
 
@@ -641,7 +645,7 @@ class TerminalJs{
 
     }
 
-    forceUpdateUrl(){
+    forceUpdateUrl(isBack=false){
 
         var that = this,list = this.forceUpdateList,i,stateVals = this.StatesVals;
 
@@ -657,7 +661,7 @@ class TerminalJs{
 
             if(list[i]){
 
-                list[i]()
+                list[i](isBack)
 
             }
 
@@ -690,7 +694,7 @@ interface CmdObjectInDepthRes{
     LastKey:string|number
 }
 
-class TerminalJsFlow{
+export class TerminalJsFlow{
 
     static CmdSrcs = {Cmd:1,Url:0}
     Url:string
@@ -712,13 +716,11 @@ class TerminalJsFlow{
 
     Start(forceMod:string=""){
 
-        var that = this
-
         this.parseValue()
 
         this.applyValueAndSetIfPush(forceMod)
 
-        this.TerminalJs.ProcessFlow(that)
+        this.TerminalJs.ProcessFlow(this)
 
     }
 
@@ -765,7 +767,7 @@ class TerminalJsFlow{
 
         }
 
-        this.IsPushUrl = forceMod==""?isPush:(forceMod=="replaceUrl"?false:true)
+        this.IsPushUrl = forceMod==TerminalJs.ForceModes.Auto?isPush:(forceMod==TerminalJs.ForceModes.Replace?false:true)
 
     }
 
@@ -784,8 +786,6 @@ class TerminalJsFlow{
             }
 
         }
-
-
 
     }
 
@@ -1162,7 +1162,7 @@ class TerminalJsValue{
 
     }
 
-    SetDefault():()=>void{
+    SetDefault():(isBack:boolean)=>void{
 
         var that = this;
 
@@ -1176,9 +1176,11 @@ class TerminalJsValue{
 
             this.value = this.default
 
-            return function () {
+            return function (isBack:boolean) {
 
-                that.callback(that.default,false)
+                that.callback(that.default,isBack)
+
+                terminalJs.Callback(that.name,that.value,isBack)
 
             }
 

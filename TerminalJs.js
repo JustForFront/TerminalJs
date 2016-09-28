@@ -37,7 +37,7 @@ define(["require", "exports"], function (require, exports) {
             return query_string;
         };
         TerminalJs.prototype.Init = function () {
-            var url = this.getCurrentUrl();
+            var url = this.getUrl();
             if (url) {
                 (new TerminalJsFlow(url, TerminalJsFlow.CmdSrcs.Url)).Start();
             }
@@ -73,14 +73,13 @@ define(["require", "exports"], function (require, exports) {
                 if (this.forceMode == "") {
                     oJson = "";
                     that.ToUrl(stateName, newVal, isPushUrl);
-                    if (OnChanged) {
-                        OnChanged(newVal, that.historyHandler(that.currentUrl, 1), stateName);
-                        that.Callback(stateName, newVal, false);
-                    }
+                    vals[stateName].callback(newVal, that.historyHandler(that.currentUrl, 1));
+                    that.Callback(stateName, newVal, false);
                 }
                 else {
-                    that.forceUpdateList[stateName] = function () {
-                        OnChanged(newVal, false, stateName);
+                    that.forceUpdateList[stateName] = function (isBack) {
+                        vals[stateName].callback(newVal, isBack);
+                        that.Callback(stateName, newVal, isBack);
                     };
                 }
             };
@@ -100,8 +99,9 @@ define(["require", "exports"], function (require, exports) {
                             }, 1);
                         }
                         else {
-                            that.forceUpdateList[stateName] = function () {
-                                OnChanged(vals[stateName].value, false, stateName);
+                            that.forceUpdateList[stateName] = function (isBack) {
+                                vals[stateName].callback(vals[stateName].value, isBack);
+                                that.Callback(stateName, vals[stateName].value, isBack);
                             };
                         }
                     }
@@ -137,6 +137,7 @@ define(["require", "exports"], function (require, exports) {
             else {
                 this.StatesVals[stateNameStartToAll].AddCallback(callback);
             }
+            return this;
         };
         TerminalJs.prototype.RemoveCallback = function (stateNameStartToAll, callback) {
             if (stateNameStartToAll == "*") {
@@ -146,6 +147,7 @@ define(["require", "exports"], function (require, exports) {
             else {
                 this.StatesVals[stateNameStartToAll].RemoveCallback(callback);
             }
+            return this;
         };
         TerminalJs.prototype.Callback = function (stateName, val, isBack) {
             var i, callbacks;
@@ -265,18 +267,19 @@ define(["require", "exports"], function (require, exports) {
         TerminalJs.prototype.GetCurrentUrl = function () {
             return this.currentUrl;
         };
-        TerminalJs.prototype.getCurrentUrl = function () {
-            var urls = location.href.split(this.UrlSpiltter);
+        TerminalJs.prototype.getUrl = function (url) {
+            if (url === void 0) { url = location.href; }
+            var urls = url.split(this.UrlSpiltter);
             return urls.length == 1 ? "" : urls.slice(1).join(this.UrlSpiltter);
         };
         TerminalJs.prototype.MonitorDom = function (dom) {
             if (dom === void 0) { dom = document.body; }
             var that = this, keyword = that.Keyword;
             dom.addEventListener("click", function (e) {
-                e.preventDefault();
-                e.stopPropagation();
                 var dom = e.target;
                 if (dom && dom.matches("a,a *")) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     while (dom.tagName != "A") {
                         dom = dom.parentElement;
                     }
@@ -293,17 +296,16 @@ define(["require", "exports"], function (require, exports) {
                             return false;
                         }
                     }
-                    else {
-                        location.href = url;
-                    }
+                    location.href = url;
                 }
                 return false;
             });
             return this;
         };
-        TerminalJs.prototype.ExeCmd = function (cmd, isBack) {
+        TerminalJs.prototype.ExeCmd = function (cmd, isBack, forceMode) {
             if (isBack === void 0) { isBack = false; }
-            (new TerminalJsFlow(cmd, TerminalJsFlow.CmdSrcs.Cmd, isBack ? -1 : 1)).Start();
+            if (forceMode === void 0) { forceMode = TerminalJs.ForceModes.Auto; }
+            (new TerminalJsFlow(cmd, TerminalJsFlow.CmdSrcs.Cmd, isBack ? -1 : 1)).Start(forceMode);
         };
         TerminalJs.prototype.MonitorUrl = function () {
             var that = this, hashRx = new RegExp("\\" + this.Keyword + "([0-9]+)$"), checkDirection = function (hashStr) {
@@ -319,7 +321,7 @@ define(["require", "exports"], function (require, exports) {
                 return res;
             };
             window.onpopstate = function () {
-                var url = that.getCurrentUrl(), params;
+                var url = that.getUrl(), params;
                 if (that.currentUrl != url) {
                     params = hashRx.exec(url);
                     (new TerminalJsFlow(url, TerminalJsFlow.CmdSrcs.Url, checkDirection(params ? params[1] : null))).Start();
@@ -350,25 +352,29 @@ define(["require", "exports"], function (require, exports) {
         /*private*/ TerminalJs.prototype.replaceUrl = function (url) {
             history.replaceState({}, document.title, this.UrlSpiltter + url + (this.hashNumber ? this.Keyword + this.hashNumber : ""));
         };
-        TerminalJs.prototype.ForcePushUrl = function (urlOrModfunc) {
-            this.forceMod("pushUrl", urlOrModfunc);
+        TerminalJs.prototype.ForcePushUrl = function (urlOrModfunc, isBack) {
+            if (isBack === void 0) { isBack = false; }
+            this.forceMod("pushUrl", urlOrModfunc, isBack);
         };
-        TerminalJs.prototype.ForceReplaceUrl = function (urlOrModfunc) {
-            this.forceMod("replaceUrl", urlOrModfunc);
+        TerminalJs.prototype.ForceReplaceUrl = function (urlOrModfunc, isBack) {
+            if (isBack === void 0) { isBack = false; }
+            this.forceMod("replaceUrl", urlOrModfunc, isBack);
         };
-        /*private*/ TerminalJs.prototype.forceMod = function (mode, urlOrModfunc) {
+        /*private*/ TerminalJs.prototype.forceMod = function (mode, urlOrModfunc, isBack) {
+            if (isBack === void 0) { isBack = false; }
             this.forceMode = mode;
             this.forceUpdateList = {};
             if (typeof urlOrModfunc == "string") {
-                (new TerminalJsFlow(String(urlOrModfunc), TerminalJsFlow.CmdSrcs.Cmd)).Start(mode);
+                (new TerminalJsFlow(String(urlOrModfunc), TerminalJsFlow.CmdSrcs.Cmd, isBack ? -1 : 1)).Start(mode);
             }
             else {
                 urlOrModfunc(this.States);
-                this.forceUpdateUrl();
+                this.forceUpdateUrl(isBack);
             }
             this.forceMode = "";
         };
-        TerminalJs.prototype.forceUpdateUrl = function () {
+        TerminalJs.prototype.forceUpdateUrl = function (isBack) {
+            if (isBack === void 0) { isBack = false; }
             var that = this, list = this.forceUpdateList, i, stateVals = this.StatesVals;
             for (i in list) {
                 this.PrepareStateUrl(i, stateVals[i].value);
@@ -376,7 +382,7 @@ define(["require", "exports"], function (require, exports) {
             that[this.forceMode](this.getFullUrl());
             for (i in list) {
                 if (list[i]) {
-                    list[i]();
+                    list[i](isBack);
                 }
             }
             this.forceUpdateList = null;
@@ -391,6 +397,7 @@ define(["require", "exports"], function (require, exports) {
         };
         TerminalJs.StateTypes = { "HiddenTree": -6, "HiddenArray": -5, "HiddenObject": -4, "HiddenNumber": -3, "HiddenBoolean": -2, "HiddenString": -1,
             "Auto": 0, "String": 1, "Boolean": 2, "Number": 3, "Object": 4, "Array": 5, "Tree": 6 };
+        TerminalJs.ForceModes = { Replace: "replaceUrl", Push: "pushUrl", Auto: "" };
         return TerminalJs;
     }());
     var TerminalJsFlow = (function () {
@@ -406,10 +413,9 @@ define(["require", "exports"], function (require, exports) {
         }
         TerminalJsFlow.prototype.Start = function (forceMod) {
             if (forceMod === void 0) { forceMod = ""; }
-            var that = this;
             this.parseValue();
             this.applyValueAndSetIfPush(forceMod);
-            this.TerminalJs.ProcessFlow(that);
+            this.TerminalJs.ProcessFlow(this);
         };
         TerminalJsFlow.prototype.applyValueAndSetIfPush = function (forceMod) {
             var statesValue = this.TerminalJs.StatesVals, valueAfter = this.ValueAfter, i, isPush = false;
@@ -433,7 +439,7 @@ define(["require", "exports"], function (require, exports) {
                     this.TerminalJs.PrepareStateUrl(i, valueAfter[i]);
                 }
             }
-            this.IsPushUrl = forceMod == "" ? isPush : (forceMod == "replaceUrl" ? false : true);
+            this.IsPushUrl = forceMod == TerminalJs.ForceModes.Auto ? isPush : (forceMod == TerminalJs.ForceModes.Replace ? false : true);
         };
         TerminalJsFlow.prototype.DoChangeCallbacks = function (isBack) {
             var statesValue = this.TerminalJs.StatesVals, valueAfter = this.ValueAfter, i;
@@ -626,6 +632,7 @@ define(["require", "exports"], function (require, exports) {
         TerminalJsFlow.CmdSrcs = { Cmd: 1, Url: 0 };
         return TerminalJsFlow;
     }());
+    exports.TerminalJsFlow = TerminalJsFlow;
     var TerminalJsValue = (function () {
         function TerminalJsValue(name, value, defaultValue, type, isPushUrl, callbacks) {
             /*private*/ this.callbackCount = 0;
@@ -665,8 +672,9 @@ define(["require", "exports"], function (require, exports) {
             }
             else {
                 this.value = this.default;
-                return function () {
-                    that.callback(that.default, false);
+                return function (isBack) {
+                    that.callback(that.default, isBack);
+                    terminalJs.Callback(that.name, that.value, isBack);
                 };
             }
         };
