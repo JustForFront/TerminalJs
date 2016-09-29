@@ -2,8 +2,11 @@ import {terminalJs, TerminalJsFlow} from "../../TerminalJs";
 var log = console.log,
     UnitTest = function () {
 
-        var $dummy = document.getElementById("dummy"), cbTest = 0, testCallback = function () {
+        var $dummy = document.getElementById("dummy"), cbTest = 0,cbVal:any,cbName:string,cbIsBack:boolean, testCallback = function (v,isBack,name) {
             cbTest++
+            cbName = name
+            cbVal = v
+            cbIsBack = isBack
         },$a = document.createElement("A");
 
         $dummy.appendChild($a)
@@ -398,6 +401,231 @@ var log = console.log,
                 })
 
                 QUnit.test("Unit test applyValueAndSetIfPush()",function (assert) {
+
+
+                    var flow = new TerminalJsFlow("ccc",TerminalJsFlow.CmdSrcs.Cmd,1),oNumberVal = terminalJs.GetStateValue("number")
+
+                    flow.parseValue()
+                    flow.applyValueAndSetIfPush("replaceUrl")
+
+                    assert.equal(terminalJs.GetStateValue("main"),"ccc","value ok")
+                    assert.equal(terminalJs.GetStateValue("number"),oNumberVal,"other value ok")
+                    assert.equal(flow.IsPushUrl,false,"ispush ok")
+
+                    flow = new TerminalJsFlow("ddd",TerminalJsFlow.CmdSrcs.Url,1)
+
+                    flow.parseValue()
+                    flow.applyValueAndSetIfPush("pushUrl")
+
+                    assert.equal(terminalJs.urlParts["main"],"ddd","url ok")
+                    assert.equal(terminalJs.GetStateValue("main"),"ddd","value ok")
+                    assert.equal(terminalJs.GetStateValue("number"),null,"other value ok")
+                    assert.equal(flow.IsPushUrl,true,"ispush ok")
+
+                })
+
+                QUnit.test("Unit test DoChangeCallbacks()",function (assert) {
+
+                    var flow = new TerminalJsFlow("$number/123",TerminalJsFlow.CmdSrcs.Cmd,1),oCbTest = cbTest
+
+                    flow.parseValue()
+                    flow.applyValueAndSetIfPush("pushUrl")
+
+                    flow.DoChangeCallbacks(false)
+
+                    assert.equal(cbTest,oCbTest+2,"callbacked")
+
+
+                })
+
+                QUnit.test("Unit test parseValue()",function (assert) {
+
+                    var flow = new TerminalJsFlow("eee/$number/234/$bool/false",TerminalJsFlow.CmdSrcs.Cmd,1)
+
+                    flow.parseValue()
+
+                    assert.equal(flow.ValueAfter["main"],"eee","main ok")
+                    assert.equal(flow.ValueAfter["number"],234,"number ok")
+                    assert.equal(flow.ValueAfter["bool"],false,"bool ok")
+
+
+                })
+
+                QUnit.test("Unit test optionValueFromUrl()",function (assert) {
+
+                    var flow = new TerminalJsFlow("fff",TerminalJsFlow.CmdSrcs.Cmd,1),
+                        arr = [1],tree = {"a":[1]},obj = {}
+
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Array,"+2",arr)
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Array,"-1",arr)
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Array,"!3",arr)
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Array,"!3",arr)
+
+                    assert.deepEqual(arr,[2],"array ok")
+
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/+2/b/+2",tree)
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/-1/b/-2",tree)
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/!3/b/!1",tree)
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/!3/b/!1",tree)
+
+                    assert.deepEqual(tree,{a:[2],b:[]},"tree ok")
+
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Object,"a.b.c/!1",obj)
+                    flow.optionValueFromUrl(terminalJs.StateTypes.Object,"a.c/+2",obj)
+
+                    assert.deepEqual(obj,{a:{b:{c:[1]},c:[2]}},"object ok")
+                    
+                })
+
+                QUnit.test("Unit test ValueFormUrl()",function (assert) {
+
+                    var flow = new TerminalJsFlow("fff",TerminalJsFlow.CmdSrcs.Cmd,1)
+
+                    flow.ValueFormUrl("main","你好/testes/%24testScripts")
+
+                    assert.equal(flow.ValueAfter["main"],"你好/testes/$testScripts","string ok")
+
+                    flow.ValueFormUrl("main","test")
+                    flow.ValueFormUrl("main","!test")
+
+                    assert.equal(flow.ValueAfter["main"],null,"string toggle ok")
+
+                    flow.ValueFormUrl("number","321")
+
+                    assert.equal(flow.ValueAfter["number"],"321","number ok")
+
+                    flow.ValueFormUrl("number","!321")
+
+                    assert.equal(flow.ValueAfter["number"],null,"number toggle ok")
+
+                    flow.ValueFormUrl("bool","true")
+
+                    assert.equal(flow.ValueAfter["bool"],true,"boolean true ok")
+
+                    flow.ValueFormUrl("bool","false")
+
+                    assert.equal(flow.ValueAfter["bool"],false,"boolean false ok")
+
+                    flow.ValueFormUrl("bool","toggle")
+
+                    assert.equal(flow.ValueAfter["bool"],true,"boolean toggle ok")
+
+                    flow.ValueFormUrl("array","1,2,3")
+
+                    assert.deepEqual(flow.ValueAfter["array"],[1,2,3],"number array ok")
+
+                    flow.ValueFormUrl("array","%20,abc,%24")
+
+                    assert.deepEqual(flow.ValueAfter["array"],[" ","abc","$"],"string array ok")
+
+                    flow.ValueFormUrl("tree","a/1,2,3/b/2,3,-1,1.2")
+
+                    assert.deepEqual(flow.ValueAfter["tree"],{a:[1,2,3],b:[2,3,-1,1.2]},"number tree ok")
+
+                    flow.ValueFormUrl("tree","b/%20,abc,%24/a/2,3,1")
+
+                    assert.deepEqual(flow.ValueAfter["tree"],{a:[2,3,1],b:[" ","abc","$"]},"string tree ok")
+
+                    flow.ValueFormUrl("object",encodeURIComponent(JSON.stringify({a:{c:[1,2,3],e:"123"}})))
+                    
+                    assert.deepEqual(flow.ValueAfter["object"],{a:{c:[1,2,3],e:"123"}},"json object ok")
+
+                    flow.ValueFormUrl("object","a.b/1,2,3/c/hihi/foo/bar")
+
+                    assert.deepEqual(flow.ValueAfter["object"],{a:{b:[1,2,3],c:[1,2,3],e:"123"},c:"hihi",foo:"bar"},"string object ok")
+
+                    flow.ValueFormUrl("testPreset","notSet")
+
+                    assert.deepEqual(terminalJs.PresetStateUrl["testPreset"],"$testPreset/notSet","Preset ok")
+                    
+
+
+                })
+
+                QUnit.test("Unit test CmdObjectInDepth()",function (assert) {
+
+                    var obj:any = {};
+
+                    assert.deepEqual(TerminalJsFlow.CmdObjectInDepth("a.c.e.v",obj),{LastKey:"v",Object:{}},"return ok")
+                    assert.deepEqual(obj,{a:{c:{e:{}}}},"object ok")
+
+                })
+
+            })
+
+            QUnit.module("TerminalJsValue",function () {
+
+                var Val = terminalJs.StatesVals["number"],ncallback = function () {
+                    console.log(1)
+                };
+
+                QUnit.test("Unit test callback()",function (assert) {
+
+                    var ocbTest = cbTest
+
+                    Val.callback(1234,false)
+
+                    assert.equal(cbTest,ocbTest+1,"callback ok")
+                    assert.equal(cbName,"number","name ok")
+                    assert.equal(cbVal,1234,"value ok")
+                    assert.equal(cbIsBack,false,"isBack ok")
+
+                })
+
+                QUnit.test("Unit test AddCallback()",function (assert) {
+
+                    var oCount = Val.callbackCount
+
+                    Val.AddCallback(ncallback)
+
+                    assert.equal(Val.callbackCount,oCount+1,"count ok")
+                    assert.equal(Val.callbacks[Val.callbackCount-1],ncallback,"add ok")
+
+                })
+
+                QUnit.test("Unit test RemoveCallback()",function (assert) {
+
+                    var oCount = Val.callbackCount
+
+                    Val.RemoveCallback(ncallback)
+
+                    assert.equal(Val.callbackCount,oCount-1,"count ok")
+                    assert.equal(Val.callbacks.indexOf(ncallback),-1,"remove ok")
+
+                })
+
+                QUnit.test("Unit test SetDefault()",function (assert) {
+
+                    var oCbTest = cbTest
+
+                    Val.SetDefault()(false)
+
+                    assert.equal(cbTest,oCbTest+2,"callback ok")
+                    assert.equal(Val.value,Val.default,"value ok")
+
+                })
+
+                QUnit.test("Unit test checkValue()",function (assert) {
+
+                    var done = assert.async(),oCbTest = cbTest,res:number;
+
+                    Val.default = function (cb:(res:any,retryTime:number)=>void) {
+
+                        res = Math.round(Math.random()*100)
+
+                        cb(res,500)
+                    }
+
+                    Val.checkValue()
+
+                    setTimeout(function () {
+
+                        assert.equal(cbTest,oCbTest+6,"callback ok")
+                        assert.equal(Val.value,res,"value ok")
+
+                        done()
+
+                    },1100)
 
 
                 })

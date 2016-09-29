@@ -781,7 +781,7 @@ export class TerminalJsFlow{
 
                 statesValue[i].callback(valueAfter[i],isBack)
 
-                terminalJs.Callback(i,valueAfter[i],isBack)
+                this.TerminalJs.Callback(i,valueAfter[i],isBack)
 
             }
 
@@ -789,9 +789,9 @@ export class TerminalJsFlow{
 
     }
 
-    parseValue(){
+    parseValue(url:string = this.Url){
 
-        var url = this.Url,keyword = this.TerminalJs.Keyword,rx = new RegExp("(\\"+keyword+"([^\/]+)\/([^\\"+keyword+"]*))","g"),
+        var keyword = this.TerminalJs.Keyword,rx = new RegExp("(\\"+keyword+"([^\/]+)\/([^\\"+keyword+"]*))","g"),
             match,urls = url.split(keyword);
 
         if(urls[0]){
@@ -811,50 +811,69 @@ export class TerminalJsFlow{
     optionValueFromUrl(type:number,valStr:string,stateNode:any):void{
 
         var types =  this.TerminalJs.StateTypes,i,c,res:CmdObjectInDepthRes,
+            seekAndProcess = function (arr:any[],seek:any,process:(pos:number,val:any)=>void) {
+
+                var strVal = decodeURIComponent(seek),
+                    numVal = Number(seek),
+                    i1 = arr.indexOf(strVal),
+                    i2 = arr.indexOf(numVal);
+
+                if(i1>i2){
+
+                    process(i1,strVal)
+
+                }else{
+
+                    process(i2,numVal)
+
+                }
+
+            },
             arraySub = function (target:any[],src:any[]) {
-
-                let i,c,pos;
-
-                for(i=0,c=src.length;i<c;i++){
-
-                    pos = target.indexOf(decodeURIComponent(src[i]))
-
-                    if(pos!==-1){
-
-                        target.splice(pos,1)
-
-                    }
-
-                }
-
-            },arrayToggle = function (target:any[],src:any[]) {
-
-                let i,c,pos;
-
-                for(i=0,c=src.length;i<c;i++){
-
-                    src[i] = decodeURIComponent(src[i])
-                    pos = target.indexOf(src[i])
-
-                    if(pos===-1){
-
-                        target.push(src[i])
-
-                    }else{
-
-                        target.splice(pos,1)
-
-                    }
-
-                }
-
-            },arrayAdd = function (target:any[],src:any[]) {
 
                 let i,c;
 
                 for(i=0,c=src.length;i<c;i++){
 
-                    target.push(decodeURIComponent(src[i]))
+                    seekAndProcess(target,src[i],function (pos) {
+
+                        target.splice(pos,1)
+
+                    })
+
+                }
+
+            },arrayToggle = function (target:any[],src:any[]) {
+
+                let i,c;
+
+                for(i=0,c=src.length;i<c;i++){
+
+                    seekAndProcess(target,src[i],function (pos,val) {
+
+                        if(pos===-1){
+
+                            target.push(val)
+
+                        }else{
+
+                            target.splice(pos,1)
+
+                        }
+
+                    })
+
+                }
+
+            },arrayAdd = function (target:any[],src:any[]) {
+
+                let i,c,num:number;
+
+                for(i=0,c=src.length;i<c;i++){
+
+                    num = Number(src[i])
+
+                    target.push(isNaN(num)?decodeURIComponent(src[i]):num)
 
                 }
 
@@ -923,7 +942,7 @@ export class TerminalJsFlow{
 
                         arraySub(nodes,vals)
 
-                    }else if(params[(i+1)].indexOf("*")===0){
+                    }else if(params[(i+1)].indexOf("+")===0){
 
                         arrayAdd(nodes,vals)
 
@@ -960,7 +979,7 @@ export class TerminalJsFlow{
 
     ValueFormUrl(stateName:string, stateValue:string){
 
-        var TerminalJs = this.TerminalJs,stateVal = TerminalJs.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,c;
+        var TerminalJs = this.TerminalJs,stateVal = TerminalJs.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,c,tmp:any;
 
         if(stateVal!=undefined){
 
@@ -1002,19 +1021,40 @@ export class TerminalJsFlow{
 
                             }else{
 
-                                val = terminalJs.decodeKeyword(decodeURIComponent(valStr?valStr:null))
+                                val = this.TerminalJs.decodeKeyword(decodeURIComponent(valStr?valStr:null))
 
                             }
 
                             break
                         case types.Number||types.HiddenNumber:
-                            val = Number(valStr)
+
+                            if(valStr.indexOf("!")===0){
+
+                                i = Number(valStr.substr(1))
+                                val = i===val?null:i
+
+                            }else{
+
+                                val = Number(valStr)
+
+                            }
+
                             break
                         case types.Boolean||types.HiddenBoolean:
                             val = valStr=="toggle"?!val:valStr=="true"
                             break
                         case types.Array||types.HiddenArray:
-                            val = valStr?valStr.split(",").map( decodeURIComponent):[]
+
+                            if(/^[0-9\,\.\-]+$/.test(valStr)){
+
+                                val = valStr.split(",").map(Number)
+
+                            }else{
+
+                                val = valStr?valStr.split(",").map(decodeURIComponent):[]
+
+                            }
+
                             break
                         case types.Tree||types.HiddenTree:
 
@@ -1025,7 +1065,17 @@ export class TerminalJsFlow{
 
                                 for(i=0,c = nodes.length;i<c;i+=2){
 
-                                    val[nodes[i]] = nodes[(i+1)]?nodes[(i+1)].split(",").map( decodeURIComponent):[]
+                                    tmp = nodes[(i+1)]
+
+                                    if(/^[0-9\,\.\-]+$/.test(tmp)){
+
+                                        val[nodes[i]] = tmp.split(",").map(Number)
+
+                                    }else{
+
+                                        val[nodes[i]] = tmp?tmp.split(",").map(decodeURIComponent):[]
+
+                                    }
 
                                 }
 
@@ -1052,7 +1102,21 @@ export class TerminalJsFlow{
 
                                     res = TerminalJsFlow.CmdObjectInDepth(nodes[i],val)
 
-                                    res.Object[res.LastKey] = nodes[(i+1)]
+                                    tmp = nodes[(i+1)]
+
+                                    if(/^[0-9\,\.\-]+$/.test(tmp)){
+
+                                        res.Object[res.LastKey] = tmp.split(",").map(Number)
+
+                                    }else if(tmp.indexOf(",")===-1){
+
+                                        res.Object[res.LastKey] = tmp
+
+                                    }else{
+
+                                        res.Object[res.LastKey] = tmp?tmp.split(",").map(decodeURIComponent):[]
+
+                                    }
 
                                 }
 
@@ -1078,11 +1142,12 @@ export class TerminalJsFlow{
 
     }
 
-    static CmdObjectInDepth(keyCmd:string,Obj):CmdObjectInDepthRes{
+    static CmdObjectInDepth(keyCmd:string,Obj:any):CmdObjectInDepthRes{
 
         var keys = keyCmd.split("."),i = 0,c = keys.length-1;
 
         for(;i<c;i++){
+
 
             if(!Obj[keys[i]]){
 
@@ -1100,7 +1165,7 @@ export class TerminalJsFlow{
 
 }
 
-class TerminalJsValue{
+export class TerminalJsValue{
 
     name:string
     value:any
@@ -1196,6 +1261,7 @@ class TerminalJsValue{
 
             that.value = res
             that.callback(res,false)
+            terminalJs.Callback(that.name,res,false)
 
             if(retryTime){
 
