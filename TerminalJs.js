@@ -8,13 +8,12 @@ define(["require", "exports"], function (require, exports) {
             this.PresetStateUrl = {};
             this.Keyword = "$";
             this.UrlSpiltter = "/index.html";
+            this.CustomCommands = [];
             this.urlParts = {};
             this.history = [];
             this.historyPosition = 0;
             /*private*/ this.callbacks = [];
             /*private*/ this.callbackCount = 0;
-            /*private*/ this.forceMode = "";
-            /*private*/ this.forceUpdateList = {};
             /*private*/ this.hashNumber = 0;
             /*private*/ this.initalized = false;
         }
@@ -64,24 +63,20 @@ define(["require", "exports"], function (require, exports) {
             }
             return isBack;
         };
+        TerminalJs.prototype.AddCommand = function (syntax, behaviorFunc, isPush) {
+            if (isPush === void 0) { isPush = true; }
+            this.CustomCommands.push(new TerminalJsCommand(syntax, behaviorFunc, isPush));
+        };
         TerminalJs.prototype.AddState = function (stateName, defaultVal, OnChanged, isPushUrl, type) {
             if (defaultVal === void 0) { defaultVal = null; }
             if (OnChanged === void 0) { OnChanged = null; }
             if (isPushUrl === void 0) { isPushUrl = true; }
             if (type === void 0) { type = TerminalJs.StateTypes.Auto; }
             var oJson = "", that = this, stateTypes = this.StateTypes, vals = this.StatesVals, onChanged = function (newVal) {
-                if (this.forceMode == "") {
-                    oJson = "";
-                    that.ToUrl(stateName, newVal, isPushUrl);
-                    vals[stateName].callback(newVal, that.historyHandler(that.currentUrl, 1));
-                    that.Callback(stateName, newVal, false);
-                }
-                else {
-                    that.forceUpdateList[stateName] = function (isBack) {
-                        vals[stateName].callback(newVal, isBack);
-                        that.Callback(stateName, newVal, isBack);
-                    };
-                }
+                oJson = "";
+                that.ToUrl(stateName, newVal, isPushUrl);
+                vals[stateName].callback(newVal, that.historyHandler(that.currentUrl, 1));
+                that.Callback(stateName, newVal, false);
             };
             if (type == stateTypes.Auto) {
                 type = this.parseValType(defaultVal);
@@ -90,20 +85,12 @@ define(["require", "exports"], function (require, exports) {
             Object.defineProperty(this.States, stateName, {
                 get: function () {
                     if (type > stateTypes.Number || type < stateTypes.HiddenNumber) {
-                        if (that.forceMode == "") {
-                            oJson = JSON.stringify(vals[stateName].value);
-                            setTimeout(function () {
-                                if (oJson && JSON.stringify(vals[stateName].value) != oJson) {
-                                    onChanged(vals[stateName].value);
-                                }
-                            }, 1);
-                        }
-                        else {
-                            that.forceUpdateList[stateName] = function (isBack) {
-                                vals[stateName].callback(vals[stateName].value, isBack);
-                                that.Callback(stateName, vals[stateName].value, isBack);
-                            };
-                        }
+                        oJson = JSON.stringify(vals[stateName].value);
+                        setTimeout(function () {
+                            if (oJson && JSON.stringify(vals[stateName].value) != oJson) {
+                                onChanged(vals[stateName].value);
+                            }
+                        }, 1);
                     }
                     return vals[stateName].value;
                 },
@@ -117,15 +104,13 @@ define(["require", "exports"], function (require, exports) {
                 configurable: true
             });
             if (this.initalized) {
-                var isPush = isPushUrl, preUrl = this.PresetStateUrl[stateName];
-                vals[stateName].isPushUrl = isPushUrl = false;
+                var preUrl = this.PresetStateUrl[stateName];
                 if (preUrl) {
                     (new TerminalJsFlow(preUrl, TerminalJsFlow.CmdSrcs.Cmd, 1)).Start("replaceUrl");
                 }
                 else {
-                    this.States[stateName] = defaultVal;
+                    vals[stateName].SetDefault(false, false);
                 }
-                vals[stateName].isPushUrl = isPushUrl = isPush;
             }
             return this;
         };
@@ -235,15 +220,13 @@ define(["require", "exports"], function (require, exports) {
             return this.currentUrl;
         };
         TerminalJs.prototype.DefaultValToUrl = function () {
-            var that = this;
-            this.ForceReplaceUrl(function () {
-                var i, parts = that.urlParts, vals = that.StatesVals;
-                for (i in vals) {
-                    if (parts[i] == undefined) {
-                        that.forceUpdateList[i] = vals[i].SetDefault();
-                    }
+            var i, parts = this.urlParts, vals = this.StatesVals, toDefault = {};
+            for (i in vals) {
+                if (parts[i] == undefined) {
+                    toDefault[i] = vals[i].GetDefault();
                 }
-            });
+            }
+            (new TerminalJsFlow(null, TerminalJsFlow.CmdSrcs.Cmd, 1)).Apply(toDefault, false);
         };
         TerminalJs.prototype.PrepareStateUrl = function (stateName, stateVal) {
             var url = this.formatValUrl(stateName, stateVal);
@@ -354,38 +337,47 @@ define(["require", "exports"], function (require, exports) {
         };
         TerminalJs.prototype.ForcePushUrl = function (urlOrModfunc, isBack) {
             if (isBack === void 0) { isBack = false; }
-            this.forceMod("pushUrl", urlOrModfunc, isBack);
+            this.forceMod(TerminalJs.ForceModes.Push, urlOrModfunc, isBack);
         };
         TerminalJs.prototype.ForceReplaceUrl = function (urlOrModfunc, isBack) {
             if (isBack === void 0) { isBack = false; }
-            this.forceMod("replaceUrl", urlOrModfunc, isBack);
+            this.forceMod(TerminalJs.ForceModes.Replace, urlOrModfunc, isBack);
         };
         /*private*/ TerminalJs.prototype.forceMod = function (mode, urlOrModfunc, isBack) {
             if (isBack === void 0) { isBack = false; }
-            this.forceMode = mode;
-            this.forceUpdateList = {};
             if (typeof urlOrModfunc == "string") {
                 (new TerminalJsFlow(String(urlOrModfunc), TerminalJsFlow.CmdSrcs.Cmd, isBack ? -1 : 1)).Start(mode);
             }
             else {
-                urlOrModfunc(this.States);
-                this.forceUpdateUrl(isBack);
+                var newValues = {};
+                urlOrModfunc(newValues);
+                (new TerminalJsFlow(null, TerminalJsFlow.CmdSrcs.Cmd, isBack ? -1 : 1)).Apply(newValues, mode == TerminalJs.ForceModes.Push);
             }
-            this.forceMode = "";
         };
-        TerminalJs.prototype.forceUpdateUrl = function (isBack) {
-            if (isBack === void 0) { isBack = false; }
-            var that = this, list = this.forceUpdateList, i, stateVals = this.StatesVals;
-            for (i in list) {
-                this.PrepareStateUrl(i, stateVals[i].value);
-            }
-            that[this.forceMode](this.getFullUrl());
-            for (i in list) {
-                if (list[i]) {
-                    list[i](isBack);
+        TerminalJs.prototype.ApplyValuesAndCheckIfPush = function (values, clean) {
+            if (clean === void 0) { clean = false; }
+            var statesValue = this.StatesVals, i, isPush = false;
+            if (clean) {
+                for (i in statesValue) {
+                    if (values[i] == undefined) {
+                        if (statesValue[i].type < 0) {
+                            continue;
+                        }
+                        values[i] = null;
+                    }
+                    statesValue[i].value = values[i];
+                    isPush = isPush || statesValue[i].isPushUrl;
+                    this.PrepareStateUrl(i, values[i]);
                 }
             }
-            this.forceUpdateList = null;
+            else {
+                for (i in values) {
+                    statesValue[i].value = values[i];
+                    isPush = isPush || statesValue[i].isPushUrl;
+                    this.PrepareStateUrl(i, values[i]);
+                }
+            }
+            return isPush;
         };
         TerminalJs.prototype.encodeKeyword = function (str) {
             var keyword = this.Keyword, rx = new RegExp("\\" + keyword, "g");
@@ -400,68 +392,183 @@ define(["require", "exports"], function (require, exports) {
         TerminalJs.ForceModes = { Replace: "replaceUrl", Push: "pushUrl", Auto: "" };
         return TerminalJs;
     }());
+    var TerminalJsCommand = (function () {
+        function TerminalJsCommand(syntax, behaviorFunc, isPush) {
+            this.Params = {};
+            this.Syntax = syntax;
+            this.IsPush = isPush;
+            this.BehaviorFunc = behaviorFunc;
+            this.parseSyntax();
+        }
+        TerminalJsCommand.prototype.parseSyntax = function () {
+            var syntaxParams = this.Syntax.split("/$"), i, c = syntaxParams.length, params = this.Params, param, endedMust = false, val, l, must = 0;
+            this.CommandStr = syntaxParams[0];
+            for (i = 1; i < c; i++) {
+                param = syntaxParams[i].split(":");
+                l = param.length;
+                if (l == 3) {
+                    endedMust = true;
+                    val = param[2];
+                    switch (param[1]) {
+                        case "number":
+                            var i = Number(val);
+                            if (isNaN(i)) {
+                                throw "command_parameter_setting_error";
+                            }
+                            else {
+                                val = i;
+                            }
+                            break;
+                        case "boolean":
+                            if (val == "true" || val == "false") {
+                                val = val == "true";
+                            }
+                            else {
+                                throw "command_parameter_setting_error";
+                            }
+                            break;
+                        case "json":
+                            val = JSON.parse(decodeURIComponent(val));
+                            break;
+                    }
+                    params[param[0]] = { default: val, value: null, name: param[0], type: param[1], must: true };
+                }
+                else {
+                    if (endedMust) {
+                        throw "command_parameter_setting_error";
+                    }
+                    if (l == 1) {
+                        params[param[0]] = { default: null, value: null, name: param[0], type: "string", must: true };
+                    }
+                    else {
+                        params[param[0]] = { default: null, value: null, name: param[0], type: param[1], must: true };
+                    }
+                    must++;
+                }
+            }
+            this.MustParamCount = must;
+        };
+        TerminalJsCommand.prototype.Match = function (input) {
+            if (input.indexOf(this.CommandStr) === 0 && this.MatchParams(input)) {
+                this.Exec();
+                return true;
+            }
+            return false;
+        };
+        TerminalJsCommand.prototype.MatchParams = function (input) {
+            var inputParams = input.split("/"), i, params = this.Params, seek = 1;
+            if (inputParams.length > this.MustParamCount) {
+                for (i in params) {
+                    params[i].value = this.MatchParamValue(params[i], inputParams[seek]);
+                    seek++;
+                }
+                return true;
+            }
+            return false;
+        };
+        TerminalJsCommand.prototype.MatchParamValue = function (param, val) {
+            if (val) {
+                try {
+                    switch (param.type) {
+                        case "number":
+                            var i = Number(val);
+                            if (isNaN(i)) {
+                                throw "match fail";
+                            }
+                            else {
+                                return i;
+                            }
+                        case "boolean":
+                            if (val == "true" || val == "false") {
+                                return val == "true";
+                            }
+                            else {
+                                throw "match fail";
+                            }
+                        case "json":
+                            return JSON.parse(decodeURIComponent(val));
+                        default:
+                            return decodeURIComponent(val);
+                    }
+                }
+                catch (e) {
+                    throw "match fail";
+                }
+            }
+            else {
+                return param.default;
+            }
+        };
+        TerminalJsCommand.prototype.Exec = function () {
+            var after = {}, i, res = this.BehaviorFunc(this.Params, after);
+            if (res || res === undefined) {
+                for (i in after) {
+                    (new TerminalJsFlow(null, TerminalJsFlow.CmdSrcs.Cmd, 1).Apply(after, this.IsPush));
+                    break;
+                }
+            }
+        };
+        return TerminalJsCommand;
+    }());
+    exports.TerminalJsCommand = TerminalJsCommand;
     var TerminalJsFlow = (function () {
         function TerminalJsFlow(url, src, presetDirection) {
             if (presetDirection === void 0) { presetDirection = 0; }
+            this.Url = null;
             this.IsBack = false;
             this.IsPushUrl = false;
             this.ValueAfter = {};
             this.Url = url;
             this.Src = src;
             this.PresetDirection = presetDirection;
-            this.TerminalJs = terminalJs;
         }
         TerminalJsFlow.prototype.Start = function (forceMod) {
             if (forceMod === void 0) { forceMod = ""; }
             this.parseValue();
-            this.applyValueAndSetIfPush(forceMod);
-            this.TerminalJs.ProcessFlow(this);
+            this.run(forceMod);
         };
-        TerminalJsFlow.prototype.applyValueAndSetIfPush = function (forceMod) {
-            var statesValue = this.TerminalJs.StatesVals, valueAfter = this.ValueAfter, i, isPush = false;
-            if (this.Src == TerminalJsFlow.CmdSrcs.Url) {
-                for (i in statesValue) {
-                    if (valueAfter[i] == undefined) {
-                        if (statesValue[i].type < 0) {
-                            continue;
-                        }
-                        valueAfter[i] = null;
-                    }
-                    statesValue[i].value = valueAfter[i];
-                    isPush = isPush || statesValue[i].isPushUrl;
-                    this.TerminalJs.PrepareStateUrl(i, valueAfter[i]);
-                }
-            }
-            else {
-                for (i in valueAfter) {
-                    statesValue[i].value = valueAfter[i];
-                    isPush = isPush || statesValue[i].isPushUrl;
-                    this.TerminalJs.PrepareStateUrl(i, valueAfter[i]);
-                }
-            }
+        TerminalJsFlow.prototype.Apply = function (vales, isPush) {
+            this.ValueAfter = vales;
+            this.IsPushUrl = isPush;
+            this.IsBack = false;
+            this.run(isPush ? TerminalJs.ForceModes.Push : TerminalJs.ForceModes.Replace);
+        };
+        TerminalJsFlow.prototype.run = function (forceMod) {
+            var isPush = terminalJs.ApplyValuesAndCheckIfPush(this.ValueAfter, this.Src == TerminalJsFlow.CmdSrcs.Url);
             this.IsPushUrl = forceMod == TerminalJs.ForceModes.Auto ? isPush : (forceMod == TerminalJs.ForceModes.Replace ? false : true);
+            terminalJs.ProcessFlow(this);
         };
         TerminalJsFlow.prototype.DoChangeCallbacks = function (isBack) {
-            var statesValue = this.TerminalJs.StatesVals, valueAfter = this.ValueAfter, i;
+            var statesValue = terminalJs.StatesVals, valueAfter = this.ValueAfter, i;
             for (i in valueAfter) {
                 if (statesValue[i]) {
                     statesValue[i].callback(valueAfter[i], isBack);
-                    this.TerminalJs.Callback(i, valueAfter[i], isBack);
+                    terminalJs.Callback(i, valueAfter[i], isBack);
                 }
             }
         };
         TerminalJsFlow.prototype.parseValue = function (url) {
             if (url === void 0) { url = this.Url; }
-            var keyword = this.TerminalJs.Keyword, rx = new RegExp("(\\" + keyword + "([^\/]+)\/([^\\" + keyword + "]*))", "g"), match, urls = url.split(keyword);
+            var keyword = terminalJs.Keyword, rx = new RegExp("\\" + keyword + "(([a-zA-Z][^\/]+)([^\\" + keyword + "]*))", "g"), match, urls = url.split(keyword), commands = terminalJs.CustomCommands, commandCount = commands.length, matchCommand = function (input) {
+                var i = 0;
+                for (; i < commandCount; i++) {
+                    if (commands[i].Match(input)) {
+                        return true;
+                    }
+                }
+                return false;
+            };
             if (urls[0]) {
                 this.ValueFormUrl("main", urls[0].replace(/^\/|\/$/g, ""));
             }
             while ((match = rx.exec(url)) != null) {
-                this.ValueFormUrl(match[2], match[3].replace(/\/$/, ""));
+                if (!matchCommand(match[1])) {
+                    this.ValueFormUrl(match[2], match[3].replace(/^\/|\/$/g, ""));
+                }
             }
         };
         TerminalJsFlow.prototype.optionValueFromUrl = function (type, valStr, stateNode) {
-            var types = this.TerminalJs.StateTypes, i, c, res, seekAndProcess = function (arr, seek, process) {
+            var types = terminalJs.StateTypes, i, c, res, seekAndProcess = function (arr, seek, process) {
                 var strVal = decodeURIComponent(seek), numVal = Number(seek), i1 = arr.indexOf(strVal), i2 = arr.indexOf(numVal);
                 if (i1 > i2) {
                     process(i1, strVal);
@@ -555,7 +662,7 @@ define(["require", "exports"], function (require, exports) {
             }
         };
         TerminalJsFlow.prototype.ValueFormUrl = function (stateName, stateValue) {
-            var TerminalJs = this.TerminalJs, stateVal = TerminalJs.StatesVals[stateName], val, res, i, c, tmp;
+            var TerminalJs = terminalJs, stateVal = TerminalJs.StatesVals[stateName], val, res, i, c, tmp;
             if (stateVal != undefined) {
                 val = this.ValueAfter[stateName] === undefined ? stateVal.value : this.ValueAfter[stateName];
                 if (TerminalJs.urlParts[stateName] != stateName + "/" + stateValue) {
@@ -580,7 +687,7 @@ define(["require", "exports"], function (require, exports) {
                                     val = valStr == val ? null : valStr;
                                 }
                                 else {
-                                    val = this.TerminalJs.decodeKeyword(decodeURIComponent(valStr ? valStr : null));
+                                    val = terminalJs.decodeKeyword(decodeURIComponent(valStr ? valStr : null));
                                 }
                                 break;
                             case types.Number || types.HiddenNumber:
@@ -651,7 +758,7 @@ define(["require", "exports"], function (require, exports) {
                 }
             }
             else {
-                this.TerminalJs.PresetStateUrl[stateName] = this.TerminalJs.Keyword + stateName + "/" + stateValue;
+                terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword + stateName + "/" + stateValue;
             }
         };
         TerminalJsFlow.CmdObjectInDepth = function (keyCmd, Obj) {
@@ -699,19 +806,27 @@ define(["require", "exports"], function (require, exports) {
             this.callbacks.splice(this.callbacks.indexOf(callback), 1);
             this.callbackCount--;
         };
-        TerminalJsValue.prototype.SetDefault = function () {
-            var that = this;
+        TerminalJsValue.prototype.GetDefault = function () {
             if (typeof this.default == "function") {
                 this.checkValue();
                 return null;
             }
             else {
-                this.value = this.default;
-                return function (isBack) {
-                    that.callback(that.default, isBack);
-                    terminalJs.Callback(that.name, that.value, isBack);
-                };
+                return this.default;
             }
+        };
+        TerminalJsValue.prototype.SetDefault = function (isBack, isPush) {
+            if (isBack === void 0) { isBack = false; }
+            if (isPush === void 0) { isPush = this.isPushUrl; }
+            if (typeof this.default == "function") {
+                this.checkValue();
+            }
+            else {
+                var val = {};
+                val[this.name] = this.default;
+                (new TerminalJsFlow(null, TerminalJsFlow.CmdSrcs.Cmd, isBack ? -1 : 1)).Apply(val, isPush);
+            }
+            return this;
         };
         /*private*/ TerminalJsValue.prototype.checkValue = function () {
             var that = this;

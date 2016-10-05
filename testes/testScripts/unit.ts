@@ -2,6 +2,8 @@ import {terminalJs, TerminalJsFlow} from "../../TerminalJs";
 var log = console.log,
     UnitTest = function () {
 
+        QUnit.config.reorder = false
+
         var $dummy = document.getElementById("dummy"), cbTest = 0,cbVal:any,cbName:string,cbIsBack:boolean, testCallback = function (v,isBack,name) {
             cbTest++
             cbName = name
@@ -23,6 +25,8 @@ var log = console.log,
 
             QUnit.test("Unit test UrlParams()",function (assert) {
 
+                
+
                 var test = terminalJs.UrlParams("?a=123&b=%20a%20c&c="+encodeURIComponent("&?你好呀"))
 
                 assert.ok(test["a"],"param a exist")
@@ -35,6 +39,8 @@ var log = console.log,
             })
 
             QUnit.test("Unit test historyHandler()",function (assert) {
+
+                
 
                 terminalJs.history = ["/view/test.html/$id/123","/view/test.html","GetIndex"]
 
@@ -80,6 +86,8 @@ var log = console.log,
 
             QUnit.test("Unit test AddState",function (assert) {
 
+                
+
                 var test = false,callback = function () { test = true }
 
                 terminalJs.AddState("number",0,callback)
@@ -90,7 +98,7 @@ var log = console.log,
                 assert.equal(terminalJs.StatesVals["number"].value,null,"before init value")
                 assert.equal(terminalJs.StatesVals["number"].callbacks[0],callback,"callback")
 
-                terminalJs.StatesVals["number"].SetDefault()()
+                terminalJs.StatesVals["number"].SetDefault(false)
 
                 assert.equal(terminalJs.StatesVals["number"].value,0,"after init value")
                 assert.equal(test,true,"after callback")
@@ -98,6 +106,8 @@ var log = console.log,
             })
 
             QUnit.test("Unit test AddCallback() & Callback()",function (assert) {
+
+                
 
                 terminalJs.AddCallback("main",testCallback)
 
@@ -121,6 +131,8 @@ var log = console.log,
 
             QUnit.test("Unit test removeCallback()",function (assert) {
 
+                
+
                 terminalJs.RemoveCallback("main",testCallback)
 
                 assert.equal(terminalJs.StatesVals["main"].callbacks.length,0,"callback removed")
@@ -143,6 +155,8 @@ var log = console.log,
 
             QUnit.test("Unit test StateExist()",function (assert) {
 
+                
+
                 assert.equal(terminalJs.StateExist("main"),true,"exist ok")
                 assert.equal(terminalJs.StateExist("dummy"),false,"not exist ok")
 
@@ -150,12 +164,16 @@ var log = console.log,
 
             QUnit.test("Unit test GetStateValue()",function (assert) {
 
+                
+
                 assert.equal(terminalJs.GetStateValue("main"),"testAgain","get main ok")
                 assert.equal(terminalJs.GetStateValue("dummy"),undefined,"not exist ok")
 
             })
 
             QUnit.test("Unit test parseValType()",function (assert) {
+
+                
 
                 assert.equal(terminalJs.parseValType("string"),terminalJs.StateTypes.String,"string ok")
                 assert.equal(terminalJs.parseValType(true),terminalJs.StateTypes.Boolean,"boolen ok")
@@ -167,6 +185,8 @@ var log = console.log,
             })
 
             QUnit.test("Unit test formatValUrl()",function (assert) {
+
+                
 
                 assert.equal(terminalJs.formatValUrl("main","/testformatValUrl/"),"testformatValUrl","string ok")
                 assert.equal(terminalJs.formatValUrl("main","/test/formatValUrl/"),"test/formatValUrl","url string ok")
@@ -182,13 +202,17 @@ var log = console.log,
 
             QUnit.test("Unit test getFullUrl()",function (assert) {
 
+                
+
                 terminalJs.ExeCmd("test%24Main/$bool/true/$number/123")
 
-                assert.equal(terminalJs.getFullUrl(),"/test%24Main/$bool/true/$number/123","string ok")
+                assert.equal(terminalJs.getFullUrl(),"/$number/123/test%24Main/$bool/true","string ok")
 
             })
 
             QUnit.test("Unit test DefaultValToUrl()",function (assert) {
+
+                
 
                 terminalJs.urlParts = {}
                 terminalJs.DefaultValToUrl()
@@ -200,10 +224,13 @@ var log = console.log,
                 assert.deepEqual(terminalJs.GetStateValue("array"),[1,2,3],"array")
                 assert.deepEqual(terminalJs.GetStateValue("tree"),{"a":[1,2,3]},"tree")
                 assert.deepEqual(terminalJs.GetStateValue("object"),{a:{b:1}},"object")
+                assert.equal(location.href.split(terminalJs.UrlSpiltter)[1],"/abc/$bool/true/$array/1,2,3/$tree/a/1,2,3/$object/%7B%22a%22%3A%7B%22b%22%3A1%7D%7D/$number/0$6","location ok")
 
             })
 
             QUnit.test("Unit test PrepareStateUrl()",function (assert) {
+
+                
 
                 terminalJs.PrepareStateUrl("number",123)
                 assert.equal(terminalJs.urlParts["number"],"number/123","value ok")
@@ -215,8 +242,11 @@ var log = console.log,
 
             QUnit.test("Unit test ToUrl()",function (assert) {
 
+                
+
                 var len = history.length
 
+                terminalJs.DefaultValToUrl()
                 terminalJs.ToUrl("number",234)
                 assert.equal(terminalJs.currentUrl,"/abc/$bool/true/$array/1,2,3/$tree/a/1,2,3/$object/%7B%22a%22%3A%7B%22b%22%3A1%7D%7D/$number/234","url push ok")
                 assert.equal(history.length,len+1,"push history len ok")
@@ -229,17 +259,23 @@ var log = console.log,
 
             QUnit.test("Unit test GetCurrentUrl()",function (assert) {
 
+                
+
                 assert.equal(terminalJs.GetCurrentUrl(),"/abc/$bool/true/$array/1,2,3/$tree/a/1,2,3/$object/%7B%22a%22%3A%7B%22b%22%3A1%7D%7D/$number/123","url ok")
 
             })
 
             QUnit.test("Unit test getUrl()",function (assert) {
 
+                
+
                 assert.equal(terminalJs.getUrl(terminalJs.UrlSpiltter+"/test"+terminalJs.UrlSpiltter+"/$test/123"),"/test"+terminalJs.UrlSpiltter+"/$test/123"," ok")
 
             })
 
             QUnit.test("Unit test MonitorDom()",function (assert) {
+
+                
 
                 var done = assert.async(),
                     ev = document.createEvent('Events')
@@ -271,6 +307,8 @@ var log = console.log,
 
             QUnit.test("Unit test ExeCmd()",function (assert) {
 
+                
+
                 terminalJs.ExeCmd("$number/1")
 
                 assert.equal(terminalJs.StatesVals["number"].value,1," ok")
@@ -279,22 +317,28 @@ var log = console.log,
 
             QUnit.test("Unit test MonitorUrl()",function (assert) {
 
+                
+
                 terminalJs.MonitorUrl()
 
                 terminalJs.ExeCmd("$number/345")
-                terminalJs.ExeCmd("test")
+                terminalJs.ExeCmd("testA")
 
-                assert.equal(terminalJs.StatesVals["main"].value,"test","before main ok")
+                assert.equal(terminalJs.StatesVals["main"].value,"testA","before main ok")
                 assert.equal(terminalJs.StatesVals["number"].value,345,"before number ok")
+
+                terminalJs.ExeCmd("testB")
 
                 history.back()
 
-                assert.equal(terminalJs.StatesVals["main"].value,"abc","after main ok")
+                assert.equal(terminalJs.StatesVals["main"].value,"testA","after main ok")
                 assert.equal(terminalJs.StatesVals["number"].value,345,"after number ok")
 
             })
 
             QUnit.test("Unit test pushUrl()",function (assert) {
+
+                
 
                 var oHash = terminalJs.hashNumber,hLen = history.length
 
@@ -308,6 +352,8 @@ var log = console.log,
 
             QUnit.test("Unit test replaceUrl()",function (assert) {
 
+                
+
                 var oHash = terminalJs.hashNumber,hLen = history.length
 
                 terminalJs.replaceUrl("/abc")
@@ -319,6 +365,8 @@ var log = console.log,
             })
 
             QUnit.test("Unit test ForcePushUrl() & ForceReplaceUrl()",function (assert) {
+
+                
 
                 var oHash = terminalJs.hashNumber,hLen = history.length,oCbTest = cbTest;
 
@@ -351,7 +399,31 @@ var log = console.log,
 
             })
 
+            QUnit.test("Unit test ApplyValuesAndCheckIfPush()",function (assert) {
+
+                
+
+                var oNumberVal = terminalJs.GetStateValue("number"),IsPush
+
+                IsPush = terminalJs.ApplyValuesAndCheckIfPush({main:"ccc"})
+
+                assert.equal(terminalJs.GetStateValue("main"),"ccc","value ok")
+                assert.equal(terminalJs.GetStateValue("number"),oNumberVal,"other value ok")
+                assert.equal(IsPush,true,"ispush ok")
+
+                IsPush = terminalJs.ApplyValuesAndCheckIfPush({main:"ddd"},true)
+
+                assert.equal(terminalJs.urlParts["main"],"ddd","url ok")
+                assert.equal(terminalJs.GetStateValue("main"),"ddd","value ok")
+                assert.equal(terminalJs.GetStateValue("number"),null,"other value ok")
+                assert.equal(IsPush,true,"ispush ok")
+
+            })
+
+
             QUnit.test("Unit test encodeKeyword()",function (assert) {
+
+                
 
                 var kw = terminalJs.Keyword,codedKw = encodeURIComponent(kw)
 
@@ -363,9 +435,58 @@ var log = console.log,
 
             QUnit.test("Unit test decodeKeyword()",function (assert) {
 
+                
+
                 var kw = terminalJs.Keyword,codedKw = encodeURIComponent(kw)
 
                 assert.equal(terminalJs.decodeKeyword(codedKw+"TEST"+codedKw+codedKw),kw+"TEST"+kw+kw," ok")
+
+            })
+
+
+            QUnit.test("Unit test AddCommand()",function (assert) {
+
+                terminalJs.ExeCmd("test/$number/123")
+
+                var bhNum = function (params,values):boolean {
+
+                    values.number = terminalJs.GetStateValue("number")+params["toAdd"].value
+
+                },bhStr = function (params,values):boolean {
+
+                    values.main = terminalJs.GetStateValue("main")+params["str1"].value+params["str2"].value
+
+                },oStrV = terminalJs.GetStateValue("main"),oNumV = terminalJs.GetStateValue("number")
+
+                terminalJs.AddCommand("addToNumber/$toAdd:number",bhNum,false)
+                terminalJs.AddCommand("addToString/$str1:string/$str2:string:added2",bhStr,false)
+
+                assert.equal(terminalJs.CustomCommands.length,2,"command added")
+                assert.equal(terminalJs.CustomCommands[0].CommandStr,"addToNumber","command string 1 ok")
+                assert.equal(terminalJs.CustomCommands[0].Params["toAdd"].type,"number","command 1 param ok")
+                assert.equal(terminalJs.CustomCommands[0].BehaviorFunc,bhNum,"command 1 behavior ok")
+
+                assert.equal(terminalJs.CustomCommands[1].CommandStr,"addToString","command string 2 ok")
+                assert.equal(terminalJs.CustomCommands[1].Params["str2"].type,"string","command 2 param 2 ok")
+                assert.equal(terminalJs.CustomCommands[1].Params["str2"].default,"added2","command 2 param 2 default ok")
+                assert.equal(terminalJs.CustomCommands[1].Params["str1"].type,"string","command 2 param 1 ok")
+                assert.equal(terminalJs.CustomCommands[1].BehaviorFunc,bhStr,"command 1 behavior ok")
+
+                terminalJs.ExeCmd("$addToNumber/110")
+
+                assert.equal(terminalJs.GetStateValue("number"),oNumV+110,"command 1 run ok")
+
+                terminalJs.ExeCmd("$addToNumber/-110")
+
+                assert.equal(terminalJs.GetStateValue("number"),oNumV,"command 1 run negative ok")
+
+                terminalJs.ExeCmd("$addToString/added1/added3")
+
+                assert.equal(terminalJs.GetStateValue("main"),oStrV+"added1"+"added3","command 2 run ok")
+
+                terminalJs.ExeCmd("$addToString/added4")
+
+                assert.equal(terminalJs.GetStateValue("main"),oStrV+"added1"+"added3"+"added4"+"added2","command 2 run default ok")
 
             })
 
@@ -400,36 +521,12 @@ var log = console.log,
 
                 })
 
-                QUnit.test("Unit test applyValueAndSetIfPush()",function (assert) {
-
-
-                    var flow = new TerminalJsFlow("ccc",TerminalJsFlow.CmdSrcs.Cmd,1),oNumberVal = terminalJs.GetStateValue("number")
-
-                    flow.parseValue()
-                    flow.applyValueAndSetIfPush("replaceUrl")
-
-                    assert.equal(terminalJs.GetStateValue("main"),"ccc","value ok")
-                    assert.equal(terminalJs.GetStateValue("number"),oNumberVal,"other value ok")
-                    assert.equal(flow.IsPushUrl,false,"ispush ok")
-
-                    flow = new TerminalJsFlow("ddd",TerminalJsFlow.CmdSrcs.Url,1)
-
-                    flow.parseValue()
-                    flow.applyValueAndSetIfPush("pushUrl")
-
-                    assert.equal(terminalJs.urlParts["main"],"ddd","url ok")
-                    assert.equal(terminalJs.GetStateValue("main"),"ddd","value ok")
-                    assert.equal(terminalJs.GetStateValue("number"),null,"other value ok")
-                    assert.equal(flow.IsPushUrl,true,"ispush ok")
-
-                })
-
                 QUnit.test("Unit test DoChangeCallbacks()",function (assert) {
 
                     var flow = new TerminalJsFlow("$number/123",TerminalJsFlow.CmdSrcs.Cmd,1),oCbTest = cbTest
 
                     flow.parseValue()
-                    flow.applyValueAndSetIfPush("pushUrl")
+
 
                     flow.DoChangeCallbacks(false)
 
@@ -440,13 +537,13 @@ var log = console.log,
 
                 QUnit.test("Unit test parseValue()",function (assert) {
 
-                    var flow = new TerminalJsFlow("eee/$number/234/$bool/false",TerminalJsFlow.CmdSrcs.Cmd,1)
+                    var flow = new TerminalJsFlow("eee/$number/234/$bool/true",TerminalJsFlow.CmdSrcs.Cmd,1)
 
                     flow.parseValue()
 
                     assert.equal(flow.ValueAfter["main"],"eee","main ok")
                     assert.equal(flow.ValueAfter["number"],234,"number ok")
-                    assert.equal(flow.ValueAfter["bool"],false,"bool ok")
+                    assert.equal(flow.ValueAfter["bool"],true,"bool ok")
 
 
                 })
@@ -474,12 +571,14 @@ var log = console.log,
                     flow.optionValueFromUrl(terminalJs.StateTypes.Object,"a.c/+2",obj)
 
                     assert.deepEqual(obj,{a:{b:{c:[1]},c:[2]}},"object ok")
-                    
+
                 })
 
                 QUnit.test("Unit test ValueFormUrl()",function (assert) {
 
                     var flow = new TerminalJsFlow("fff",TerminalJsFlow.CmdSrcs.Cmd,1)
+
+                    terminalJs.urlParts = {main:""}
 
                     flow.ValueFormUrl("main","你好/testes/%24testScripts")
 
@@ -527,7 +626,7 @@ var log = console.log,
                     assert.deepEqual(flow.ValueAfter["tree"],{a:[2,3,1],b:[" ","abc","$"]},"string tree ok")
 
                     flow.ValueFormUrl("object",encodeURIComponent(JSON.stringify({a:{c:[1,2,3],e:"123"}})))
-                    
+
                     assert.deepEqual(flow.ValueAfter["object"],{a:{c:[1,2,3],e:"123"}},"json object ok")
 
                     flow.ValueFormUrl("object","a.b/1,2,3/c/hihi/foo/bar")
@@ -537,7 +636,7 @@ var log = console.log,
                     flow.ValueFormUrl("testPreset","notSet")
 
                     assert.deepEqual(terminalJs.PresetStateUrl["testPreset"],"$testPreset/notSet","Preset ok")
-                    
+
 
 
                 })
@@ -556,7 +655,7 @@ var log = console.log,
             QUnit.module("TerminalJsValue",function () {
 
                 var Val = terminalJs.StatesVals["number"],ncallback = function () {
-                    console.log(1)
+                    console.log(1234)
                 };
 
                 QUnit.test("Unit test callback()",function (assert) {
@@ -598,7 +697,7 @@ var log = console.log,
 
                     var oCbTest = cbTest
 
-                    Val.SetDefault()(false)
+                    Val.SetDefault(false)
 
                     assert.equal(cbTest,oCbTest+2,"callback ok")
                     assert.equal(Val.value,Val.default,"value ok")
