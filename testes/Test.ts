@@ -1,7 +1,7 @@
 import {UnitTest} from "./testScripts/unit";
 import {terminalJs} from "../TerminalJs";
 
-history.replaceState({},"","/testes/index.html")
+history.replaceState({},"","/index.html")
 
 UnitTest()
 

@@ -1,6 +1,6 @@
 var log = console.log
 
-class TerminalJs{
+export class TerminalJs{
 
     static StateTypes = {"HiddenTree":-6,"HiddenArray":-5,"HiddenObject":-4,"HiddenNumber":-3,"HiddenBoolean":-2,"HiddenString":-1,
         "Auto":0,"String":1,"Boolean":2,"Number":3,"Object":4,"Array":5,"Tree":6}
@@ -22,7 +22,369 @@ class TerminalJs{
     /*private*/ hashNumber:number = 0
     /*private*/ initalized:boolean = false
 
-    constructor(){}
+    constructor(){
+
+        this.AddCommand("/$stateName:string/$values:string...:",this.defaultCommandBehavior)
+
+    }
+    
+    defaultCommandBehavior(params:TerminalJsCommandParamsAbstract,values:TerminalJsCommandAfterValueAbstract){
+
+        var that = terminalJs,stateName = params["stateName"].value,stateValues = <string[]>params["values"].value,vLen = stateValues.length,valStr,
+            stateVal = that.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,tmp:any;
+
+        if(stateVal!=undefined){
+
+            val = values[stateName]===undefined?stateVal.value:values[stateName]
+            valStr = stateValues.join("/")
+
+            if(that.urlParts[stateName]!=stateName+"/"+valStr){
+
+                var type = stateVal.type,types = that.StateTypes;
+
+
+                if(valStr==""){
+
+                    val = null
+
+                }else if((type>types.Number||type<types.HiddenNumber)&&/(?:^[\!\-\+]|\/[\!\-\+])/.test(valStr)){
+
+                    if(val===null||val===undefined){
+
+                        val = type===4?[]:{}
+
+                    }else{
+
+                        val = JSON.parse(JSON.stringify(val))
+
+                    }
+
+                    that.optionValueFromUrl(type,valStr,val)
+
+                }else{
+
+                    switch (type){
+
+                        case types.String||types.HiddenString:
+
+                            if(valStr.indexOf("!")===0){
+
+                                valStr = decodeURIComponent(valStr.substr(1))
+                                val = valStr==val?null:valStr
+
+                            }else{
+
+                                val = terminalJs.decodeKeyword(decodeURIComponent(valStr?valStr:null))
+
+                            }
+
+                            break
+                        case types.Number||types.HiddenNumber:
+
+                            if(valStr.indexOf("!")===0){
+
+                                i = Number(valStr.substr(1))
+                                val = i===val?null:i
+
+                            }else{
+
+                                val = Number(valStr)
+
+                            }
+
+                            break
+                        case types.Boolean||types.HiddenBoolean:
+                            val = valStr=="toggle"?!val:valStr=="true"
+                            break
+                        case types.Array||types.HiddenArray:
+
+                            if(/^[0-9\|\.\-]+$/.test(valStr)){
+
+                                val = valStr.split("|").map(Number)
+
+                            }else{
+
+                                val = valStr?valStr.split(",").map(decodeURIComponent):[]
+
+                            }
+
+                            break
+                        case types.Tree||types.HiddenTree:
+
+                            if(valStr){
+
+                                val = val?val:{}
+
+                                for(i=0;i<vLen;i+=2){
+
+                                    tmp = stateValues[(i+1)]
+
+                                    if(/^[0-9\|\.\-]+$/.test(tmp)){
+
+                                        val[stateValues[i]] = tmp.split("|").map(Number)
+
+                                    }else{
+
+                                        val[stateValues[i]] = tmp?tmp.split(",").map(decodeURIComponent):[]
+
+                                    }
+
+                                }
+
+                            }else{
+
+                                val = {}
+
+                            }
+
+                            break
+                        default:
+
+
+                            if(valStr.indexOf("%7B")==0||valStr.indexOf("%5B")==0){
+
+                                val = JSON.parse(decodeURIComponent(valStr).trim())
+
+                            }else{
+
+                                val = val?val:{}
+
+                                for(i=0;i<vLen;i+=2){
+
+                                    res = TerminalJs.CmdObjectInDepth(stateValues[i],val)
+
+                                    tmp = stateValues[(i+1)]
+
+                                    if(/^[0-9\|\.\-]+$/.test(tmp)){
+
+                                        res.Object[res.LastKey] = tmp.split("|").map(Number)
+
+                                    }else if(tmp.indexOf(",")===-1){
+
+                                        res.Object[res.LastKey] = tmp
+
+                                    }else{
+
+                                        res.Object[res.LastKey] = tmp?tmp.split(",").map(decodeURIComponent):[]
+
+                                    }
+
+                                }
+
+                            }
+
+                    }
+
+                }
+
+                values[stateName] = val
+
+            }else{
+
+                values[stateName] = stateVal.value
+
+            }
+
+        }else{
+
+            terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword+stateName+"/"+stateValues
+
+        }
+
+
+    }
+
+
+    optionValueFromUrl(type:number,valStr:string,stateNode:any):void{
+
+        var types =  this.StateTypes,i,c,res:CmdObjectInDepthRes,
+            seekAndProcess = function (arr:any[],seek:any,process:(pos:number,val:any)=>void) {
+
+                var strVal = decodeURIComponent(seek),
+                    numVal = Number(seek),
+                    i1 = arr.indexOf(strVal),
+                    i2 = arr.indexOf(numVal);
+
+                if(i1>i2){
+
+                    process(i1,strVal)
+
+                }else{
+
+                    process(i2,numVal)
+
+                }
+
+            },
+            arraySub = function (target:any[],src:any[]) {
+
+                let i,c;
+
+                for(i=0,c=src.length;i<c;i++){
+
+                    seekAndProcess(target,src[i],function (pos) {
+
+                        target.splice(pos,1)
+
+                    })
+
+                }
+
+            },arrayToggle = function (target:any[],src:any[]) {
+
+                let i,c;
+
+                for(i=0,c=src.length;i<c;i++){
+
+                    seekAndProcess(target,src[i],function (pos,val) {
+
+                        if(pos===-1){
+
+                            target.push(val)
+
+                        }else{
+
+                            target.splice(pos,1)
+
+                        }
+
+                    })
+
+                }
+
+            },arrayAdd = function (target:any[],src:any[]) {
+
+                let i,c,num:number;
+
+                for(i=0,c=src.length;i<c;i++){
+
+                    num = Number(src[i])
+
+                    target.push(isNaN(num)?decodeURIComponent(src[i]):num)
+
+                }
+
+            },vals,nodes,params;
+
+        switch (type){
+
+            case types.Tree||types.HiddenTree:
+                params = valStr.split("/")
+
+                for(i=0,c=params.length;i<c;i+=2){
+
+                    vals = params[(i+1)].substr(1).split(",")
+
+                    if(stateNode[params[i]]){
+
+                        nodes = stateNode[params[i]]
+
+                    }else{
+
+                        nodes = []
+                        stateNode[params[i]] = nodes
+
+                    }
+
+                    if(params[(i+1)].indexOf("-")===0){
+
+                        arraySub(nodes,vals)
+
+                    }else if(params[(i+1)].indexOf("+")===0){
+
+                        arrayAdd(nodes,vals)
+
+                    }else{
+
+                        arrayToggle(nodes,vals)
+
+                    }
+
+                }
+
+                break
+
+            case types.Object||types.HiddenObject:
+
+                params = valStr.split("/")
+
+                for(i=0,c=params.length;i<c;i+=2){
+
+                    vals = params[(i+1)].substr(1).split(",")
+
+                    res = TerminalJs.CmdObjectInDepth(params[i],stateNode)
+
+                    if(res.Object[res.LastKey]){
+
+                        nodes = res.Object[res.LastKey]
+
+                    }else{
+
+                        nodes = []
+                        res.Object[res.LastKey] = nodes
+
+                    }
+
+                    if(params[(i+1)].indexOf("-")===0){
+
+                        arraySub(nodes,vals)
+
+                    }else if(params[(i+1)].indexOf("+")===0){
+
+                        arrayAdd(nodes,vals)
+
+                    }else{
+
+                        arrayToggle(nodes,vals)
+
+                    }
+
+                }
+
+                break
+
+            default:
+                vals = valStr.substr(1).split(",")
+
+                if(valStr.indexOf("-")===0){
+
+                    arraySub(stateNode,vals)
+
+                }else if(valStr.indexOf("+")===0){
+
+                    arrayAdd(stateNode,vals)
+
+                }else{
+
+                    arrayToggle(stateNode,vals)
+
+                }
+
+        }
+
+    }
+
+
+    static CmdObjectInDepth(keyCmd:string,Obj:any):CmdObjectInDepthRes{
+
+        var keys = keyCmd.split("."),i = 0,c = keys.length-1;
+
+        for(;i<c;i++){
+
+
+            if(!Obj[keys[i]]){
+
+                Obj[keys[i]] = {}
+
+            }
+
+            Obj = Obj[keys[i]]
+
+        }
+
+        return {LastKey:keys[c],Object:Obj}
+
+    }
 
     UrlParams(url:string=location.href):{[key:string]:any} {
         var q = url.split("?"),query_string = {},query = q.length==1?"":q[1],vars = query.split("&");
@@ -93,9 +455,9 @@ class TerminalJs{
 
     }
 
-    AddCommand(syntax:string,behaviorFunc:(params:TerminalJsCommandParamsAbstract,after:any)=>boolean,isPush:boolean=true){
+    AddCommand(syntax:string,behaviorFunc:(params:TerminalJsCommandParamsAbstract,after:any)=>void,isPush:boolean=true){
 
-        this.CustomCommands.push(new TerminalJsCommand(syntax,behaviorFunc,isPush))
+        this.CustomCommands.unshift(new TerminalJsCommand(syntax,behaviorFunc,isPush))
 
     }
 
@@ -613,15 +975,15 @@ class TerminalJs{
     ApplyValuesAndCheckIfPush(values:any,clean:boolean=false):boolean{
 
         var statesValue = this.StatesVals,
-             i, isPush = false;
+             i, isPush = false
 
         if (clean) {
 
-            for(i in statesValue){
+            for(i in statesValue) {
 
-                if(values[i]==undefined){
+                if (values[i] == undefined) {
 
-                    if(statesValue[i].type<0){
+                    if (statesValue[i].type < 0) {
 
                         continue
 
@@ -631,11 +993,15 @@ class TerminalJs{
 
                 }
 
-                statesValue[i].value = values[i]
+                if (statesValue[i].value !== values[i]) {
 
-                isPush = isPush||statesValue[i].isPushUrl
+                    statesValue[i].value = values[i]
 
-                this.PrepareStateUrl(i,values[i])
+                    isPush = isPush || statesValue[i].isPushUrl
+
+                    this.PrepareStateUrl(i, values[i])
+
+                }
 
             }
 
@@ -643,11 +1009,15 @@ class TerminalJs{
 
             for(i in values){
 
-                statesValue[i].value = values[i]
+                if(statesValue[i].value !== values[i]) {
 
-                isPush = isPush||statesValue[i].isPushUrl
+                    statesValue[i].value = values[i]
 
-                this.PrepareStateUrl(i,values[i])
+                    isPush = isPush || statesValue[i].isPushUrl
+
+                    this.PrepareStateUrl(i, values[i])
+
+                }
 
             }
 
@@ -692,16 +1062,30 @@ interface TerminalJsCommandParamsAbstract{
     [propName: string]: TerminalJsCommandParamAbstract;
 }
 
+interface TerminalJsCommandAfterValueAbstract{
+    Done?:()=>void
+    IsPush?:boolean
+    Discard?:boolean
+    [propName: string]: any;
+}
+
+export class TerminalJsCommandAfterValue implements TerminalJsCommandAfterValueAbstract{
+
+    Discard:boolean
+
+}
+
 export class TerminalJsCommand{
 
     CommandStr:string
     Params:TerminalJsCommandParamsAbstract = {}
     MustParamCount:number
-    BehaviorFunc:(params:TerminalJsCommandParamsAbstract,after:any)=>boolean
+    BehaviorFunc:(params:TerminalJsCommandParamsAbstract,after:TerminalJsCommandAfterValueAbstract)=>void
     IsPush:boolean
     Syntax:string
+    ParamCount:number;
 
-    constructor(syntax:string,behaviorFunc:(params:TerminalJsCommandParamsAbstract,after:any)=>boolean,isPush:boolean){
+    constructor(syntax:string,behaviorFunc:(params:TerminalJsCommandParamsAbstract,after:TerminalJsCommandAfterValueAbstract)=>void,isPush:boolean){
 
         this.Syntax = syntax
         this.IsPush = isPush
@@ -789,15 +1173,16 @@ export class TerminalJsCommand{
 
         }
 
+        this.ParamCount = c-1
         this.MustParamCount = must
 
     }
 
-    Match(input:string):boolean{
+    Match(input:string,afterVal:TerminalJsCommandAfterValue):boolean{
 
         if(input.indexOf(this.CommandStr)===0&&this.MatchParams(input)){
 
-            this.Exec()
+            this.Exec(afterVal)
 
             return true
 
@@ -809,13 +1194,21 @@ export class TerminalJsCommand{
 
     MatchParams(input:string):boolean{
 
-        var inputParams = input.split("/"),i:string,params = this.Params,seek = 1;
+        var inputParams = input.split("/"),i:string,params = this.Params,seek = this.CommandStr?1:0,lastParam = this.ParamCount;
 
-        if(inputParams.length>this.MustParamCount){
+        if(inputParams.length>this.MustParamCount-1+seek){
 
             for(i in params){
 
-                params[i].value = this.MatchParamValue(params[i],inputParams[seek])
+                if(lastParam==seek){
+
+                    params[i].value = this.MatchParamValue(params[i],inputParams.splice(seek).join("/"))
+
+                }else{
+
+                    params[i].value = this.MatchParamValue(params[i],inputParams[seek])
+
+                }
 
                 seek++
 
@@ -835,36 +1228,62 @@ export class TerminalJsCommand{
 
             try{
 
-                switch (param.type){
+                var type = param.type,l = type.length-3,vals:string[],i,c,res:any[],
+                    parseVal = function (type,val:string) {
 
-                    case "number":
-                        var i = Number(val)
+                        switch (type){
 
-                        if(isNaN(i)){
+                            case "number":
+                                var i = Number(val)
 
-                            throw "match fail"
+                                if(isNaN(i)){
 
-                        }else{
+                                    throw "match fail"
 
-                            return i
+                                }else{
+
+                                    return i
+
+                                }
+                            case "boolean":
+
+                                if(val=="true"||val=="false"){
+
+                                    return val=="true"
+
+                                }else{
+
+                                    throw "match fail"
+
+                                }
+
+                            case "json":
+                                return JSON.parse(decodeURIComponent(val))
+                            default:
+                                return decodeURIComponent(val)
 
                         }
-                    case "boolean":
 
-                        if(val=="true"||val=="false"){
+                    }
+                if(type.indexOf("...")==l){
 
-                            return val=="true"
+                    type = type.substr(0,l)
+                    vals = val.split("/")
+                    res = []
 
-                        }else{
+                    for(i=0,c=vals.length;i<c;i++){
 
-                            throw "match fail"
+                        res.push(parseVal(type,vals[i]))
 
-                        }
+                    }
 
-                    case "json":
-                        return JSON.parse(decodeURIComponent(val))
-                    default:
-                        return decodeURIComponent(val)
+
+
+                    return res
+
+                }else{
+
+                    return parseVal(type,val)
 
                 }
 
@@ -884,22 +1303,9 @@ export class TerminalJsCommand{
 
     }
 
-    Exec(){
+    Exec(afterVal:TerminalJsCommandAfterValue){
 
-        var after:any = {},i,
-            res = this.BehaviorFunc(this.Params,after);
-
-        if(res||res===undefined){
-
-            for(i in after){
-
-                (new TerminalJsFlow(null,TerminalJsFlow.CmdSrcs.Cmd,1).Apply(after,this.IsPush))
-
-                break
-
-            }
-
-        }
+        this.BehaviorFunc(this.Params,afterVal);
 
     }
 
@@ -913,7 +1319,7 @@ export class TerminalJsFlow{
     IsBack:boolean = false
     IsPushUrl:boolean = false
     PresetDirection:number
-    ValueAfter:{[stateName:string]:any} = {}
+    ValueAfter:TerminalJsCommandAfterValue = new TerminalJsCommandAfterValue()
 
     constructor(url:string,src:number,presetDirection:number=0){
 
@@ -927,7 +1333,11 @@ export class TerminalJsFlow{
 
         this.parseValue()
 
-        this.run(forceMod)
+        if(!this.ValueAfter.Discard){
+
+            this.run(forceMod)
+
+        }
 
     }
 
@@ -955,15 +1365,23 @@ export class TerminalJsFlow{
 
         var statesValue = terminalJs.StatesVals,valueAfter = this.ValueAfter,i;
 
-        for(i in valueAfter){
 
-            if(statesValue[i]){
+        if(!valueAfter.Discard){
 
-                statesValue[i].callback(valueAfter[i],isBack)
+            delete valueAfter.Discard;
 
-                terminalJs.Callback(i,valueAfter[i],isBack)
+            for(i in valueAfter){
+
+                if(statesValue[i]){
+
+                    statesValue[i].callback(valueAfter[i],isBack)
+
+                    terminalJs.Callback(i,valueAfter[i],isBack)
+
+                }
 
             }
+
 
         }
 
@@ -973,396 +1391,34 @@ export class TerminalJsFlow{
 
         var keyword = terminalJs.Keyword,rx = new RegExp("\\"+keyword+"(([a-zA-Z][^\/]+)([^\\"+keyword+"]*))","g"),
             match,urls = url.split(keyword),commands = terminalJs.CustomCommands,commandCount = commands.length,
-            matchCommand = function (input:string):boolean {
-
-                var i=0
-
-                for(;i<commandCount;i++){
-
-                    if(commands[i].Match(input)){
-
-                        return true
-
-                    }
-
-                }
-
-                return false
-
-            };
+            afterVal = this.ValueAfter,i;
 
         if(urls[0]){
 
-            this.ValueFormUrl("main",urls[0].replace(/^\/|\/$/g,""))
+            commands[commandCount-1].Match("main/"+urls[0].replace(/^\/|\/$/g,""),afterVal)
 
         }
 
         while((match = rx.exec(url))!=null){
 
-            if(!matchCommand(match[1])){
+            for(i=0;i<commandCount;i++){
 
-                this.ValueFormUrl(match[2],match[3].replace(/^\/|\/$/g,""))
+                if(commands[i].Match(match[1],afterVal)){
+
+                    break
+
+                }
 
             }
 
-        }
+            // if(!matchCommand(match[1])){
 
-    }
+                // this.ValueFormUrl(match[2],match[3].replace(/^\/|\/$/g,""))
 
-    optionValueFromUrl(type:number,valStr:string,stateNode:any):void{
-
-        var types =  terminalJs.StateTypes,i,c,res:CmdObjectInDepthRes,
-            seekAndProcess = function (arr:any[],seek:any,process:(pos:number,val:any)=>void) {
-
-                var strVal = decodeURIComponent(seek),
-                    numVal = Number(seek),
-                    i1 = arr.indexOf(strVal),
-                    i2 = arr.indexOf(numVal);
-
-                if(i1>i2){
-
-                    process(i1,strVal)
-
-                }else{
-
-                    process(i2,numVal)
-
-                }
-
-            },
-            arraySub = function (target:any[],src:any[]) {
-
-                let i,c;
-
-                for(i=0,c=src.length;i<c;i++){
-
-                    seekAndProcess(target,src[i],function (pos) {
-
-                        target.splice(pos,1)
-
-                    })
-
-                }
-
-            },arrayToggle = function (target:any[],src:any[]) {
-
-                let i,c;
-
-                for(i=0,c=src.length;i<c;i++){
-
-                    seekAndProcess(target,src[i],function (pos,val) {
-
-                        if(pos===-1){
-
-                            target.push(val)
-
-                        }else{
-
-                            target.splice(pos,1)
-
-                        }
-
-                    })
-
-                }
-
-            },arrayAdd = function (target:any[],src:any[]) {
-
-                let i,c,num:number;
-
-                for(i=0,c=src.length;i<c;i++){
-
-                    num = Number(src[i])
-
-                    target.push(isNaN(num)?decodeURIComponent(src[i]):num)
-
-                }
-
-            },vals,nodes,params;
-
-        switch (type){
-
-            case types.Tree||types.HiddenTree:
-                params = valStr.split("/")
-
-                for(i=0,c=params.length;i<c;i+=2){
-
-                    vals = params[(i+1)].substr(1).split(",")
-
-                    if(stateNode[params[i]]){
-
-                        nodes = stateNode[params[i]]
-
-                    }else{
-
-                        nodes = []
-                        stateNode[params[i]] = nodes
-
-                    }
-
-                    if(params[(i+1)].indexOf("-")===0){
-
-                        arraySub(nodes,vals)
-
-                    }else if(params[(i+1)].indexOf("+")===0){
-
-                        arrayAdd(nodes,vals)
-
-                    }else{
-
-                        arrayToggle(nodes,vals)
-
-                    }
-
-                }
-
-                break
-
-            case types.Object||types.HiddenObject:
-
-                params = valStr.split("/")
-
-                for(i=0,c=params.length;i<c;i+=2){
-
-                    vals = params[(i+1)].substr(1).split(",")
-
-                    res = TerminalJsFlow.CmdObjectInDepth(params[i],stateNode)
-
-                    if(res.Object[res.LastKey]){
-
-                        nodes = res.Object[res.LastKey]
-
-                    }else{
-
-                        nodes = []
-                        res.Object[res.LastKey] = nodes
-
-                    }
-
-                    if(params[(i+1)].indexOf("-")===0){
-
-                        arraySub(nodes,vals)
-
-                    }else if(params[(i+1)].indexOf("+")===0){
-
-                        arrayAdd(nodes,vals)
-
-                    }else{
-
-                        arrayToggle(nodes,vals)
-
-                    }
-
-                }
-
-                break
-
-            default:
-                vals = valStr.substr(1).split(",")
-
-                if(valStr.indexOf("-")===0){
-
-                    arraySub(stateNode,vals)
-
-                }else if(valStr.indexOf("+")===0){
-
-                    arrayAdd(stateNode,vals)
-
-                }else{
-
-                    arrayToggle(stateNode,vals)
-
-                }
+            // }
 
         }
 
-    }
-
-    ValueFormUrl(stateName:string, stateValue:string){
-
-        var TerminalJs = terminalJs,stateVal = TerminalJs.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,c,tmp:any;
-
-
-        if(stateVal!=undefined){
-
-            val = this.ValueAfter[stateName]===undefined?stateVal.value:this.ValueAfter[stateName]
-
-            if(TerminalJs.urlParts[stateName]!=stateName+"/"+stateValue){
-
-                var type = stateVal.type,types = TerminalJs.StateTypes,
-                    valStr = stateValue,nodes;
-
-
-                if(stateValue==""){
-
-                    val = null
-
-                }else if((type>types.Number||type<types.HiddenNumber)&&/(?:^[\!\-\+]|\/[\!\-\+])/.test(valStr)){
-
-                    if(val===null||val===undefined){
-
-                        val = type===4?[]:{}
-
-                    }else{
-
-                        val = JSON.parse(JSON.stringify(val))
-
-                    }
-
-                    this.optionValueFromUrl(type,valStr,val)
-
-                }else{
-
-                    switch (type){
-
-                        case types.String||types.HiddenString:
-
-                            if(valStr.indexOf("!")===0){
-
-                                valStr = decodeURIComponent(valStr.substr(1))
-                                val = valStr==val?null:valStr
-
-                            }else{
-
-                                val = terminalJs.decodeKeyword(decodeURIComponent(valStr?valStr:null))
-
-                            }
-
-                            break
-                        case types.Number||types.HiddenNumber:
-
-                            if(valStr.indexOf("!")===0){
-
-                                i = Number(valStr.substr(1))
-                                val = i===val?null:i
-
-                            }else{
-
-                                val = Number(valStr)
-
-                            }
-
-                            break
-                        case types.Boolean||types.HiddenBoolean:
-                            val = valStr=="toggle"?!val:valStr=="true"
-                            break
-                        case types.Array||types.HiddenArray:
-
-                            if(/^[0-9\,\.\-]+$/.test(valStr)){
-
-                                val = valStr.split(",").map(Number)
-
-                            }else{
-
-                                val = valStr?valStr.split(",").map(decodeURIComponent):[]
-
-                            }
-
-                            break
-                        case types.Tree||types.HiddenTree:
-
-                            if(valStr){
-
-                                val = val?val:{}
-                                nodes = valStr.split("/")
-
-                                for(i=0,c = nodes.length;i<c;i+=2){
-
-                                    tmp = nodes[(i+1)]
-
-                                    if(/^[0-9\,\.\-]+$/.test(tmp)){
-
-                                        val[nodes[i]] = tmp.split(",").map(Number)
-
-                                    }else{
-
-                                        val[nodes[i]] = tmp?tmp.split(",").map(decodeURIComponent):[]
-
-                                    }
-
-                                }
-
-                            }else{
-
-                                val = {}
-
-                            }
-
-                            break
-                        default:
-
-
-                            if(valStr.indexOf("%7B")==0||valStr.indexOf("%5B")==0){
-
-                                val = JSON.parse(decodeURIComponent(valStr).trim())
-
-                            }else{
-
-                                val = val?val:{}
-                                nodes = valStr.split("/")
-
-                                for(i=0,c = nodes.length;i<c;i+=2){
-
-                                    res = TerminalJsFlow.CmdObjectInDepth(nodes[i],val)
-
-                                    tmp = nodes[(i+1)]
-
-                                    if(/^[0-9\,\.\-]+$/.test(tmp)){
-
-                                        res.Object[res.LastKey] = tmp.split(",").map(Number)
-
-                                    }else if(tmp.indexOf(",")===-1){
-
-                                        res.Object[res.LastKey] = tmp
-
-                                    }else{
-
-                                        res.Object[res.LastKey] = tmp?tmp.split(",").map(decodeURIComponent):[]
-
-                                    }
-
-                                }
-
-                            }
-
-                    }
-
-                }
-
-                this.ValueAfter[stateName] = val
-
-            }else if(this.Src==TerminalJsFlow.CmdSrcs.Url){
-
-                this.ValueAfter[stateName] = val
-
-            }
-
-        }else{
-
-            terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword+stateName+"/"+stateValue
-
-        }
-
-    }
-
-    static CmdObjectInDepth(keyCmd:string,Obj:any):CmdObjectInDepthRes{
-
-        var keys = keyCmd.split("."),i = 0,c = keys.length-1;
-
-        for(;i<c;i++){
-
-
-            if(!Obj[keys[i]]){
-
-                Obj[keys[i]] = {}
-
-            }
-
-            Obj = Obj[keys[i]]
-
-        }
-
-        return {LastKey:keys[c],Object:Obj}
 
     }
 

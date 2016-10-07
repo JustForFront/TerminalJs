@@ -16,7 +16,211 @@ define(["require", "exports"], function (require, exports) {
             /*private*/ this.callbackCount = 0;
             /*private*/ this.hashNumber = 0;
             /*private*/ this.initalized = false;
+            this.AddCommand("/$stateName:string/$values:string...:", this.defaultCommandBehavior);
         }
+        TerminalJs.prototype.defaultCommandBehavior = function (params, values) {
+            var that = terminalJs, stateName = params["stateName"].value, stateValues = params["values"].value, vLen = stateValues.length, valStr, stateVal = that.StatesVals[stateName], val, res, i, tmp;
+            if (stateVal != undefined) {
+                val = values[stateName] === undefined ? stateVal.value : values[stateName];
+                valStr = stateValues.join("/");
+                if (that.urlParts[stateName] != stateName + "/" + valStr) {
+                    var type = stateVal.type, types = that.StateTypes;
+                    if (valStr == "") {
+                        val = null;
+                    }
+                    else if ((type > types.Number || type < types.HiddenNumber) && /(?:^[\!\-\+]|\/[\!\-\+])/.test(valStr)) {
+                        if (val === null || val === undefined) {
+                            val = type === 4 ? [] : {};
+                        }
+                        else {
+                            val = JSON.parse(JSON.stringify(val));
+                        }
+                        that.optionValueFromUrl(type, valStr, val);
+                    }
+                    else {
+                        switch (type) {
+                            case types.String || types.HiddenString:
+                                if (valStr.indexOf("!") === 0) {
+                                    valStr = decodeURIComponent(valStr.substr(1));
+                                    val = valStr == val ? null : valStr;
+                                }
+                                else {
+                                    val = terminalJs.decodeKeyword(decodeURIComponent(valStr ? valStr : null));
+                                }
+                                break;
+                            case types.Number || types.HiddenNumber:
+                                if (valStr.indexOf("!") === 0) {
+                                    i = Number(valStr.substr(1));
+                                    val = i === val ? null : i;
+                                }
+                                else {
+                                    val = Number(valStr);
+                                }
+                                break;
+                            case types.Boolean || types.HiddenBoolean:
+                                val = valStr == "toggle" ? !val : valStr == "true";
+                                break;
+                            case types.Array || types.HiddenArray:
+                                if (/^[0-9\|\.\-]+$/.test(valStr)) {
+                                    val = valStr.split("|").map(Number);
+                                }
+                                else {
+                                    val = valStr ? valStr.split(",").map(decodeURIComponent) : [];
+                                }
+                                break;
+                            case types.Tree || types.HiddenTree:
+                                if (valStr) {
+                                    val = val ? val : {};
+                                    for (i = 0; i < vLen; i += 2) {
+                                        tmp = stateValues[(i + 1)];
+                                        if (/^[0-9\|\.\-]+$/.test(tmp)) {
+                                            val[stateValues[i]] = tmp.split("|").map(Number);
+                                        }
+                                        else {
+                                            val[stateValues[i]] = tmp ? tmp.split(",").map(decodeURIComponent) : [];
+                                        }
+                                    }
+                                }
+                                else {
+                                    val = {};
+                                }
+                                break;
+                            default:
+                                if (valStr.indexOf("%7B") == 0 || valStr.indexOf("%5B") == 0) {
+                                    val = JSON.parse(decodeURIComponent(valStr).trim());
+                                }
+                                else {
+                                    val = val ? val : {};
+                                    for (i = 0; i < vLen; i += 2) {
+                                        res = TerminalJs.CmdObjectInDepth(stateValues[i], val);
+                                        tmp = stateValues[(i + 1)];
+                                        if (/^[0-9\|\.\-]+$/.test(tmp)) {
+                                            res.Object[res.LastKey] = tmp.split("|").map(Number);
+                                        }
+                                        else if (tmp.indexOf(",") === -1) {
+                                            res.Object[res.LastKey] = tmp;
+                                        }
+                                        else {
+                                            res.Object[res.LastKey] = tmp ? tmp.split(",").map(decodeURIComponent) : [];
+                                        }
+                                    }
+                                }
+                        }
+                    }
+                    values[stateName] = val;
+                }
+                else {
+                    values[stateName] = stateVal.value;
+                }
+            }
+            else {
+                terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword + stateName + "/" + stateValues;
+            }
+        };
+        TerminalJs.prototype.optionValueFromUrl = function (type, valStr, stateNode) {
+            var types = this.StateTypes, i, c, res, seekAndProcess = function (arr, seek, process) {
+                var strVal = decodeURIComponent(seek), numVal = Number(seek), i1 = arr.indexOf(strVal), i2 = arr.indexOf(numVal);
+                if (i1 > i2) {
+                    process(i1, strVal);
+                }
+                else {
+                    process(i2, numVal);
+                }
+            }, arraySub = function (target, src) {
+                var i, c;
+                for (i = 0, c = src.length; i < c; i++) {
+                    seekAndProcess(target, src[i], function (pos) {
+                        target.splice(pos, 1);
+                    });
+                }
+            }, arrayToggle = function (target, src) {
+                var i, c;
+                for (i = 0, c = src.length; i < c; i++) {
+                    seekAndProcess(target, src[i], function (pos, val) {
+                        if (pos === -1) {
+                            target.push(val);
+                        }
+                        else {
+                            target.splice(pos, 1);
+                        }
+                    });
+                }
+            }, arrayAdd = function (target, src) {
+                var i, c, num;
+                for (i = 0, c = src.length; i < c; i++) {
+                    num = Number(src[i]);
+                    target.push(isNaN(num) ? decodeURIComponent(src[i]) : num);
+                }
+            }, vals, nodes, params;
+            switch (type) {
+                case types.Tree || types.HiddenTree:
+                    params = valStr.split("/");
+                    for (i = 0, c = params.length; i < c; i += 2) {
+                        vals = params[(i + 1)].substr(1).split(",");
+                        if (stateNode[params[i]]) {
+                            nodes = stateNode[params[i]];
+                        }
+                        else {
+                            nodes = [];
+                            stateNode[params[i]] = nodes;
+                        }
+                        if (params[(i + 1)].indexOf("-") === 0) {
+                            arraySub(nodes, vals);
+                        }
+                        else if (params[(i + 1)].indexOf("+") === 0) {
+                            arrayAdd(nodes, vals);
+                        }
+                        else {
+                            arrayToggle(nodes, vals);
+                        }
+                    }
+                    break;
+                case types.Object || types.HiddenObject:
+                    params = valStr.split("/");
+                    for (i = 0, c = params.length; i < c; i += 2) {
+                        vals = params[(i + 1)].substr(1).split(",");
+                        res = TerminalJs.CmdObjectInDepth(params[i], stateNode);
+                        if (res.Object[res.LastKey]) {
+                            nodes = res.Object[res.LastKey];
+                        }
+                        else {
+                            nodes = [];
+                            res.Object[res.LastKey] = nodes;
+                        }
+                        if (params[(i + 1)].indexOf("-") === 0) {
+                            arraySub(nodes, vals);
+                        }
+                        else if (params[(i + 1)].indexOf("+") === 0) {
+                            arrayAdd(nodes, vals);
+                        }
+                        else {
+                            arrayToggle(nodes, vals);
+                        }
+                    }
+                    break;
+                default:
+                    vals = valStr.substr(1).split(",");
+                    if (valStr.indexOf("-") === 0) {
+                        arraySub(stateNode, vals);
+                    }
+                    else if (valStr.indexOf("+") === 0) {
+                        arrayAdd(stateNode, vals);
+                    }
+                    else {
+                        arrayToggle(stateNode, vals);
+                    }
+            }
+        };
+        TerminalJs.CmdObjectInDepth = function (keyCmd, Obj) {
+            var keys = keyCmd.split("."), i = 0, c = keys.length - 1;
+            for (; i < c; i++) {
+                if (!Obj[keys[i]]) {
+                    Obj[keys[i]] = {};
+                }
+                Obj = Obj[keys[i]];
+            }
+            return { LastKey: keys[c], Object: Obj };
+        };
         TerminalJs.prototype.UrlParams = function (url) {
             if (url === void 0) { url = location.href; }
             var q = url.split("?"), query_string = {}, query = q.length == 1 ? "" : q[1], vars = query.split("&");
@@ -65,7 +269,7 @@ define(["require", "exports"], function (require, exports) {
         };
         TerminalJs.prototype.AddCommand = function (syntax, behaviorFunc, isPush) {
             if (isPush === void 0) { isPush = true; }
-            this.CustomCommands.push(new TerminalJsCommand(syntax, behaviorFunc, isPush));
+            this.CustomCommands.unshift(new TerminalJsCommand(syntax, behaviorFunc, isPush));
         };
         TerminalJs.prototype.AddState = function (stateName, defaultVal, OnChanged, isPushUrl, type) {
             if (defaultVal === void 0) { defaultVal = null; }
@@ -365,16 +569,20 @@ define(["require", "exports"], function (require, exports) {
                         }
                         values[i] = null;
                     }
-                    statesValue[i].value = values[i];
-                    isPush = isPush || statesValue[i].isPushUrl;
-                    this.PrepareStateUrl(i, values[i]);
+                    if (statesValue[i].value !== values[i]) {
+                        statesValue[i].value = values[i];
+                        isPush = isPush || statesValue[i].isPushUrl;
+                        this.PrepareStateUrl(i, values[i]);
+                    }
                 }
             }
             else {
                 for (i in values) {
-                    statesValue[i].value = values[i];
-                    isPush = isPush || statesValue[i].isPushUrl;
-                    this.PrepareStateUrl(i, values[i]);
+                    if (statesValue[i].value !== values[i]) {
+                        statesValue[i].value = values[i];
+                        isPush = isPush || statesValue[i].isPushUrl;
+                        this.PrepareStateUrl(i, values[i]);
+                    }
                 }
             }
             return isPush;
@@ -392,6 +600,13 @@ define(["require", "exports"], function (require, exports) {
         TerminalJs.ForceModes = { Replace: "replaceUrl", Push: "pushUrl", Auto: "" };
         return TerminalJs;
     }());
+    exports.TerminalJs = TerminalJs;
+    var TerminalJsCommandAfterValue = (function () {
+        function TerminalJsCommandAfterValue() {
+        }
+        return TerminalJsCommandAfterValue;
+    }());
+    exports.TerminalJsCommandAfterValue = TerminalJsCommandAfterValue;
     var TerminalJsCommand = (function () {
         function TerminalJsCommand(syntax, behaviorFunc, isPush) {
             this.Params = {};
@@ -446,20 +661,26 @@ define(["require", "exports"], function (require, exports) {
                     must++;
                 }
             }
+            this.ParamCount = c - 1;
             this.MustParamCount = must;
         };
-        TerminalJsCommand.prototype.Match = function (input) {
+        TerminalJsCommand.prototype.Match = function (input, afterVal) {
             if (input.indexOf(this.CommandStr) === 0 && this.MatchParams(input)) {
-                this.Exec();
+                this.Exec(afterVal);
                 return true;
             }
             return false;
         };
         TerminalJsCommand.prototype.MatchParams = function (input) {
-            var inputParams = input.split("/"), i, params = this.Params, seek = 1;
-            if (inputParams.length > this.MustParamCount) {
+            var inputParams = input.split("/"), i, params = this.Params, seek = this.CommandStr ? 1 : 0, lastParam = this.ParamCount;
+            if (inputParams.length > this.MustParamCount - 1 + seek) {
                 for (i in params) {
-                    params[i].value = this.MatchParamValue(params[i], inputParams[seek]);
+                    if (lastParam == seek) {
+                        params[i].value = this.MatchParamValue(params[i], inputParams.splice(seek).join("/"));
+                    }
+                    else {
+                        params[i].value = this.MatchParamValue(params[i], inputParams[seek]);
+                    }
                     seek++;
                 }
                 return true;
@@ -469,26 +690,40 @@ define(["require", "exports"], function (require, exports) {
         TerminalJsCommand.prototype.MatchParamValue = function (param, val) {
             if (val) {
                 try {
-                    switch (param.type) {
-                        case "number":
-                            var i = Number(val);
-                            if (isNaN(i)) {
-                                throw "match fail";
-                            }
-                            else {
-                                return i;
-                            }
-                        case "boolean":
-                            if (val == "true" || val == "false") {
-                                return val == "true";
-                            }
-                            else {
-                                throw "match fail";
-                            }
-                        case "json":
-                            return JSON.parse(decodeURIComponent(val));
-                        default:
-                            return decodeURIComponent(val);
+                    var type = param.type, l = type.length - 3, vals, i, c, res, parseVal = function (type, val) {
+                        switch (type) {
+                            case "number":
+                                var i = Number(val);
+                                if (isNaN(i)) {
+                                    throw "match fail";
+                                }
+                                else {
+                                    return i;
+                                }
+                            case "boolean":
+                                if (val == "true" || val == "false") {
+                                    return val == "true";
+                                }
+                                else {
+                                    throw "match fail";
+                                }
+                            case "json":
+                                return JSON.parse(decodeURIComponent(val));
+                            default:
+                                return decodeURIComponent(val);
+                        }
+                    };
+                    if (type.indexOf("...") == l) {
+                        type = type.substr(0, l);
+                        vals = val.split("/");
+                        res = [];
+                        for (i = 0, c = vals.length; i < c; i++) {
+                            res.push(parseVal(type, vals[i]));
+                        }
+                        return res;
+                    }
+                    else {
+                        return parseVal(type, val);
                     }
                 }
                 catch (e) {
@@ -499,14 +734,8 @@ define(["require", "exports"], function (require, exports) {
                 return param.default;
             }
         };
-        TerminalJsCommand.prototype.Exec = function () {
-            var after = {}, i, res = this.BehaviorFunc(this.Params, after);
-            if (res || res === undefined) {
-                for (i in after) {
-                    (new TerminalJsFlow(null, TerminalJsFlow.CmdSrcs.Cmd, 1).Apply(after, this.IsPush));
-                    break;
-                }
-            }
+        TerminalJsCommand.prototype.Exec = function (afterVal) {
+            this.BehaviorFunc(this.Params, afterVal);
         };
         return TerminalJsCommand;
     }());
@@ -517,7 +746,7 @@ define(["require", "exports"], function (require, exports) {
             this.Url = null;
             this.IsBack = false;
             this.IsPushUrl = false;
-            this.ValueAfter = {};
+            this.ValueAfter = new TerminalJsCommandAfterValue();
             this.Url = url;
             this.Src = src;
             this.PresetDirection = presetDirection;
@@ -525,7 +754,9 @@ define(["require", "exports"], function (require, exports) {
         TerminalJsFlow.prototype.Start = function (forceMod) {
             if (forceMod === void 0) { forceMod = ""; }
             this.parseValue();
-            this.run(forceMod);
+            if (!this.ValueAfter.Discard) {
+                this.run(forceMod);
+            }
         };
         TerminalJsFlow.prototype.Apply = function (vales, isPush) {
             this.ValueAfter = vales;
@@ -540,236 +771,29 @@ define(["require", "exports"], function (require, exports) {
         };
         TerminalJsFlow.prototype.DoChangeCallbacks = function (isBack) {
             var statesValue = terminalJs.StatesVals, valueAfter = this.ValueAfter, i;
-            for (i in valueAfter) {
-                if (statesValue[i]) {
-                    statesValue[i].callback(valueAfter[i], isBack);
-                    terminalJs.Callback(i, valueAfter[i], isBack);
+            if (!valueAfter.Discard) {
+                delete valueAfter.Discard;
+                for (i in valueAfter) {
+                    if (statesValue[i]) {
+                        statesValue[i].callback(valueAfter[i], isBack);
+                        terminalJs.Callback(i, valueAfter[i], isBack);
+                    }
                 }
             }
         };
         TerminalJsFlow.prototype.parseValue = function (url) {
             if (url === void 0) { url = this.Url; }
-            var keyword = terminalJs.Keyword, rx = new RegExp("\\" + keyword + "(([a-zA-Z][^\/]+)([^\\" + keyword + "]*))", "g"), match, urls = url.split(keyword), commands = terminalJs.CustomCommands, commandCount = commands.length, matchCommand = function (input) {
-                var i = 0;
-                for (; i < commandCount; i++) {
-                    if (commands[i].Match(input)) {
-                        return true;
-                    }
-                }
-                return false;
-            };
+            var keyword = terminalJs.Keyword, rx = new RegExp("\\" + keyword + "(([a-zA-Z][^\/]+)([^\\" + keyword + "]*))", "g"), match, urls = url.split(keyword), commands = terminalJs.CustomCommands, commandCount = commands.length, afterVal = this.ValueAfter, i;
             if (urls[0]) {
-                this.ValueFormUrl("main", urls[0].replace(/^\/|\/$/g, ""));
+                commands[commandCount - 1].Match("main/" + urls[0].replace(/^\/|\/$/g, ""), afterVal);
             }
             while ((match = rx.exec(url)) != null) {
-                if (!matchCommand(match[1])) {
-                    this.ValueFormUrl(match[2], match[3].replace(/^\/|\/$/g, ""));
+                for (i = 0; i < commandCount; i++) {
+                    if (commands[i].Match(match[1], afterVal)) {
+                        break;
+                    }
                 }
             }
-        };
-        TerminalJsFlow.prototype.optionValueFromUrl = function (type, valStr, stateNode) {
-            var types = terminalJs.StateTypes, i, c, res, seekAndProcess = function (arr, seek, process) {
-                var strVal = decodeURIComponent(seek), numVal = Number(seek), i1 = arr.indexOf(strVal), i2 = arr.indexOf(numVal);
-                if (i1 > i2) {
-                    process(i1, strVal);
-                }
-                else {
-                    process(i2, numVal);
-                }
-            }, arraySub = function (target, src) {
-                var i, c;
-                for (i = 0, c = src.length; i < c; i++) {
-                    seekAndProcess(target, src[i], function (pos) {
-                        target.splice(pos, 1);
-                    });
-                }
-            }, arrayToggle = function (target, src) {
-                var i, c;
-                for (i = 0, c = src.length; i < c; i++) {
-                    seekAndProcess(target, src[i], function (pos, val) {
-                        if (pos === -1) {
-                            target.push(val);
-                        }
-                        else {
-                            target.splice(pos, 1);
-                        }
-                    });
-                }
-            }, arrayAdd = function (target, src) {
-                var i, c, num;
-                for (i = 0, c = src.length; i < c; i++) {
-                    num = Number(src[i]);
-                    target.push(isNaN(num) ? decodeURIComponent(src[i]) : num);
-                }
-            }, vals, nodes, params;
-            switch (type) {
-                case types.Tree || types.HiddenTree:
-                    params = valStr.split("/");
-                    for (i = 0, c = params.length; i < c; i += 2) {
-                        vals = params[(i + 1)].substr(1).split(",");
-                        if (stateNode[params[i]]) {
-                            nodes = stateNode[params[i]];
-                        }
-                        else {
-                            nodes = [];
-                            stateNode[params[i]] = nodes;
-                        }
-                        if (params[(i + 1)].indexOf("-") === 0) {
-                            arraySub(nodes, vals);
-                        }
-                        else if (params[(i + 1)].indexOf("+") === 0) {
-                            arrayAdd(nodes, vals);
-                        }
-                        else {
-                            arrayToggle(nodes, vals);
-                        }
-                    }
-                    break;
-                case types.Object || types.HiddenObject:
-                    params = valStr.split("/");
-                    for (i = 0, c = params.length; i < c; i += 2) {
-                        vals = params[(i + 1)].substr(1).split(",");
-                        res = TerminalJsFlow.CmdObjectInDepth(params[i], stateNode);
-                        if (res.Object[res.LastKey]) {
-                            nodes = res.Object[res.LastKey];
-                        }
-                        else {
-                            nodes = [];
-                            res.Object[res.LastKey] = nodes;
-                        }
-                        if (params[(i + 1)].indexOf("-") === 0) {
-                            arraySub(nodes, vals);
-                        }
-                        else if (params[(i + 1)].indexOf("+") === 0) {
-                            arrayAdd(nodes, vals);
-                        }
-                        else {
-                            arrayToggle(nodes, vals);
-                        }
-                    }
-                    break;
-                default:
-                    vals = valStr.substr(1).split(",");
-                    if (valStr.indexOf("-") === 0) {
-                        arraySub(stateNode, vals);
-                    }
-                    else if (valStr.indexOf("+") === 0) {
-                        arrayAdd(stateNode, vals);
-                    }
-                    else {
-                        arrayToggle(stateNode, vals);
-                    }
-            }
-        };
-        TerminalJsFlow.prototype.ValueFormUrl = function (stateName, stateValue) {
-            var TerminalJs = terminalJs, stateVal = TerminalJs.StatesVals[stateName], val, res, i, c, tmp;
-            if (stateVal != undefined) {
-                val = this.ValueAfter[stateName] === undefined ? stateVal.value : this.ValueAfter[stateName];
-                if (TerminalJs.urlParts[stateName] != stateName + "/" + stateValue) {
-                    var type = stateVal.type, types = TerminalJs.StateTypes, valStr = stateValue, nodes;
-                    if (stateValue == "") {
-                        val = null;
-                    }
-                    else if ((type > types.Number || type < types.HiddenNumber) && /(?:^[\!\-\+]|\/[\!\-\+])/.test(valStr)) {
-                        if (val === null || val === undefined) {
-                            val = type === 4 ? [] : {};
-                        }
-                        else {
-                            val = JSON.parse(JSON.stringify(val));
-                        }
-                        this.optionValueFromUrl(type, valStr, val);
-                    }
-                    else {
-                        switch (type) {
-                            case types.String || types.HiddenString:
-                                if (valStr.indexOf("!") === 0) {
-                                    valStr = decodeURIComponent(valStr.substr(1));
-                                    val = valStr == val ? null : valStr;
-                                }
-                                else {
-                                    val = terminalJs.decodeKeyword(decodeURIComponent(valStr ? valStr : null));
-                                }
-                                break;
-                            case types.Number || types.HiddenNumber:
-                                if (valStr.indexOf("!") === 0) {
-                                    i = Number(valStr.substr(1));
-                                    val = i === val ? null : i;
-                                }
-                                else {
-                                    val = Number(valStr);
-                                }
-                                break;
-                            case types.Boolean || types.HiddenBoolean:
-                                val = valStr == "toggle" ? !val : valStr == "true";
-                                break;
-                            case types.Array || types.HiddenArray:
-                                if (/^[0-9\,\.\-]+$/.test(valStr)) {
-                                    val = valStr.split(",").map(Number);
-                                }
-                                else {
-                                    val = valStr ? valStr.split(",").map(decodeURIComponent) : [];
-                                }
-                                break;
-                            case types.Tree || types.HiddenTree:
-                                if (valStr) {
-                                    val = val ? val : {};
-                                    nodes = valStr.split("/");
-                                    for (i = 0, c = nodes.length; i < c; i += 2) {
-                                        tmp = nodes[(i + 1)];
-                                        if (/^[0-9\,\.\-]+$/.test(tmp)) {
-                                            val[nodes[i]] = tmp.split(",").map(Number);
-                                        }
-                                        else {
-                                            val[nodes[i]] = tmp ? tmp.split(",").map(decodeURIComponent) : [];
-                                        }
-                                    }
-                                }
-                                else {
-                                    val = {};
-                                }
-                                break;
-                            default:
-                                if (valStr.indexOf("%7B") == 0 || valStr.indexOf("%5B") == 0) {
-                                    val = JSON.parse(decodeURIComponent(valStr).trim());
-                                }
-                                else {
-                                    val = val ? val : {};
-                                    nodes = valStr.split("/");
-                                    for (i = 0, c = nodes.length; i < c; i += 2) {
-                                        res = TerminalJsFlow.CmdObjectInDepth(nodes[i], val);
-                                        tmp = nodes[(i + 1)];
-                                        if (/^[0-9\,\.\-]+$/.test(tmp)) {
-                                            res.Object[res.LastKey] = tmp.split(",").map(Number);
-                                        }
-                                        else if (tmp.indexOf(",") === -1) {
-                                            res.Object[res.LastKey] = tmp;
-                                        }
-                                        else {
-                                            res.Object[res.LastKey] = tmp ? tmp.split(",").map(decodeURIComponent) : [];
-                                        }
-                                    }
-                                }
-                        }
-                    }
-                    this.ValueAfter[stateName] = val;
-                }
-                else if (this.Src == TerminalJsFlow.CmdSrcs.Url) {
-                    this.ValueAfter[stateName] = val;
-                }
-            }
-            else {
-                terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword + stateName + "/" + stateValue;
-            }
-        };
-        TerminalJsFlow.CmdObjectInDepth = function (keyCmd, Obj) {
-            var keys = keyCmd.split("."), i = 0, c = keys.length - 1;
-            for (; i < c; i++) {
-                if (!Obj[keys[i]]) {
-                    Obj[keys[i]] = {};
-                }
-                Obj = Obj[keys[i]];
-            }
-            return { LastKey: keys[c], Object: Obj };
         };
         TerminalJsFlow.CmdSrcs = { Cmd: 1, Url: 0 };
         return TerminalJsFlow;

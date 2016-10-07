@@ -1,4 +1,4 @@
-import {terminalJs, TerminalJsFlow} from "../../TerminalJs";
+import {terminalJs, TerminalJsFlow, TerminalJs, TerminalJsCommandAfterValue} from "../../TerminalJs";
 var log = console.log,
     UnitTest = function () {
 
@@ -215,7 +215,10 @@ var log = console.log,
                 
 
                 terminalJs.urlParts = {}
+                terminalJs.StatesVals["bool"].value = false
+
                 terminalJs.DefaultValToUrl()
+
 
                 assert.equal(terminalJs.GetStateValue("main"),"abc","string")
                 assert.equal(terminalJs.GetStateValue("hiddenstring"),"hide","hiddenstring")
@@ -242,8 +245,6 @@ var log = console.log,
 
             QUnit.test("Unit test ToUrl()",function (assert) {
 
-                
-
                 var len = history.length
 
                 terminalJs.DefaultValToUrl()
@@ -259,7 +260,6 @@ var log = console.log,
 
             QUnit.test("Unit test GetCurrentUrl()",function (assert) {
 
-                
 
                 assert.equal(terminalJs.GetCurrentUrl(),"/abc/$bool/true/$array/1,2,3/$tree/a/1,2,3/$object/%7B%22a%22%3A%7B%22b%22%3A1%7D%7D/$number/123","url ok")
 
@@ -316,8 +316,6 @@ var log = console.log,
             })
 
             QUnit.test("Unit test MonitorUrl()",function (assert) {
-
-                
 
                 terminalJs.MonitorUrl()
 
@@ -444,33 +442,147 @@ var log = console.log,
             })
 
 
+            QUnit.test("Unit test CmdObjectInDepth()",function (assert) {
+
+                var obj:any = {};
+
+                assert.deepEqual(TerminalJs.CmdObjectInDepth("a.c.e.v",obj),{LastKey:"v",Object:{}},"return ok")
+                assert.deepEqual(obj,{a:{c:{e:{}}}},"object ok")
+
+            })
+
+
+            QUnit.test("Unit test optionValueFromUrl()",function (assert) {
+
+                var arr = [1],tree = {"a":[1]},obj = {}
+
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Array,"+2",arr)
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Array,"-1",arr)
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Array,"!3",arr)
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Array,"!3",arr)
+
+                assert.deepEqual(arr,[2],"array ok")
+
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/+2/b/+2",tree)
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/-1/b/-2",tree)
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/!3/b/!1",tree)
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/!3/b/!1",tree)
+
+                assert.deepEqual(tree,{a:[2],b:[]},"tree ok")
+
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Object,"a.b.c/!1",obj)
+                terminalJs.optionValueFromUrl(terminalJs.StateTypes.Object,"a.c/+2",obj)
+
+                assert.deepEqual(obj,{a:{b:{c:[1]},c:[2]}},"object ok")
+
+            })
+
+            QUnit.test("Unit test defaultCommandBehavior()",function (assert) {
+
+                var after = new TerminalJsCommandAfterValue()
+
+                terminalJs.urlParts = {main:""}
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"main"},values:{value:["你好","testes","%24testScripts"]}},after)
+
+                assert.equal(after["main"],"你好/testes/$testScripts","string ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"main"},values:{value:["test"]}},after)
+                terminalJs.defaultCommandBehavior({stateName:{value:"main"},values:{value:["!test"]}},after)
+
+                assert.equal(after["main"],null,"string toggle ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"number"},values:{value:["321"]}},after)
+
+                assert.equal(after["number"],"321","number ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"number"},values:{value:["!321"]}},after)
+
+                assert.equal(after["number"],null,"number toggle ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"bool"},values:{value:["true"]}},after)
+
+                assert.equal(after["bool"],true,"boolean true ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"bool"},values:{value:["false"]}},after)
+
+                assert.equal(after["bool"],false,"boolean false ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"bool"},values:{value:["toggle"]}},after)
+
+                assert.equal(after["bool"],true,"boolean toggle ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"array"},values:{value:["1|2|3"]}},after)
+
+                assert.deepEqual(after["array"],[1,2,3],"number array ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"array"},values:{value:["%20,abc,%24"]}},after)
+                
+                assert.deepEqual(after["array"],[" ","abc","$"],"string array ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"tree"},values:{value:["a","1|2|3","b","2|3|-1|1.2"]}},after)
+
+                assert.deepEqual(after["tree"],{a:[1,2,3],b:[2,3,-1,1.2]},"number tree ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"tree"},values:{value:["b","%20,abc,%24","a","2|3|1"]}},after)
+
+                assert.deepEqual(after["tree"],{a:[2,3,1],b:[" ","abc","$"]},"string tree ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"object"},values:{value:[encodeURIComponent(JSON.stringify({a:{c:[1,2,3],e:"123"}}))]}},after)
+
+                assert.deepEqual(after["object"],{a:{c:[1,2,3],e:"123"}},"json object ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"object"},values:{value:["a.b","1|2|3","c","hihi","foo","bar"]}},after)
+
+                assert.deepEqual(after["object"],{a:{b:[1,2,3],c:[1,2,3],e:"123"},c:"hihi",foo:"bar"},"string object ok")
+
+                terminalJs.defaultCommandBehavior({stateName:{value:"testPreset"},values:{value:["notSet"]}},after)
+
+                assert.deepEqual(terminalJs.PresetStateUrl["testPreset"],"$testPreset/notSet","Preset ok")
+
+
+
+            })
+
+
             QUnit.test("Unit test AddCommand()",function (assert) {
 
-                terminalJs.ExeCmd("test/$number/123")
+                terminalJs.ExeCmd("test/$number/123/$array/1,2,3")
 
-                var bhNum = function (params,values):boolean {
+                var bhNum = function (params,values) {
 
                     values.number = terminalJs.GetStateValue("number")+params["toAdd"].value
 
-                },bhStr = function (params,values):boolean {
+                },bhStr = function (params,values) {
 
                     values.main = terminalJs.GetStateValue("main")+params["str1"].value+params["str2"].value
+
+                },bhArr = function (params,values) {
+
+                    values.array = terminalJs.GetStateValue("array").concat(params["toAdd"].value)
 
                 },oStrV = terminalJs.GetStateValue("main"),oNumV = terminalJs.GetStateValue("number")
 
                 terminalJs.AddCommand("addToNumber/$toAdd:number",bhNum,false)
+
                 terminalJs.AddCommand("addToString/$str1:string/$str2:string:added2",bhStr,false)
 
-                assert.equal(terminalJs.CustomCommands.length,2,"command added")
-                assert.equal(terminalJs.CustomCommands[0].CommandStr,"addToNumber","command string 1 ok")
-                assert.equal(terminalJs.CustomCommands[0].Params["toAdd"].type,"number","command 1 param ok")
-                assert.equal(terminalJs.CustomCommands[0].BehaviorFunc,bhNum,"command 1 behavior ok")
+                terminalJs.AddCommand("addToArray/$toAdd:number...",bhArr,false)
+
+                assert.equal(terminalJs.CustomCommands.length,4,"command added")
+                assert.equal(terminalJs.CustomCommands[2].CommandStr,"addToNumber","command string 1 ok")
+                assert.equal(terminalJs.CustomCommands[2].Params["toAdd"].type,"number","command 1 param ok")
+                assert.equal(terminalJs.CustomCommands[2].BehaviorFunc,bhNum,"command 1 behavior ok")
 
                 assert.equal(terminalJs.CustomCommands[1].CommandStr,"addToString","command string 2 ok")
                 assert.equal(terminalJs.CustomCommands[1].Params["str2"].type,"string","command 2 param 2 ok")
                 assert.equal(terminalJs.CustomCommands[1].Params["str2"].default,"added2","command 2 param 2 default ok")
                 assert.equal(terminalJs.CustomCommands[1].Params["str1"].type,"string","command 2 param 1 ok")
                 assert.equal(terminalJs.CustomCommands[1].BehaviorFunc,bhStr,"command 1 behavior ok")
+
+                assert.equal(terminalJs.CustomCommands[0].CommandStr,"addToArray","command string 3 ok")
+                assert.equal(terminalJs.CustomCommands[0].Params["toAdd"].type,"number...","command 3 ok")
+                assert.equal(terminalJs.CustomCommands[0].BehaviorFunc,bhArr,"command 3 behavior ok")
 
                 terminalJs.ExeCmd("$addToNumber/110")
 
@@ -488,6 +600,10 @@ var log = console.log,
 
                 assert.equal(terminalJs.GetStateValue("main"),oStrV+"added1"+"added3"+"added4"+"added2","command 2 run default ok")
 
+                terminalJs.ExeCmd("$addToArray/4/5/6")
+
+                assert.deepEqual(terminalJs.GetStateValue("array"),[1,2,3,4,5,6],"command 3 run ok")
+
             })
 
         })
@@ -502,7 +618,7 @@ var log = console.log,
 
                     flow.Start()
 
-                    // assert.equal(flow.ValueAfter["main"],"aaa","value after ok")
+                    // assert.equal(after["main"],"aaa","value after ok")
                     assert.equal(terminalJs.urlParts["main"],"aaa","url ok")
                     assert.equal(terminalJs.GetStateValue("main"),"aaa","value ok")
                     assert.equal(terminalJs.hashNumber,oHash+1,"hash ok")
@@ -545,108 +661,6 @@ var log = console.log,
                     assert.equal(flow.ValueAfter["number"],234,"number ok")
                     assert.equal(flow.ValueAfter["bool"],true,"bool ok")
 
-
-                })
-
-                QUnit.test("Unit test optionValueFromUrl()",function (assert) {
-
-                    var flow = new TerminalJsFlow("fff",TerminalJsFlow.CmdSrcs.Cmd,1),
-                        arr = [1],tree = {"a":[1]},obj = {}
-
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Array,"+2",arr)
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Array,"-1",arr)
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Array,"!3",arr)
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Array,"!3",arr)
-
-                    assert.deepEqual(arr,[2],"array ok")
-
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/+2/b/+2",tree)
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/-1/b/-2",tree)
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/!3/b/!1",tree)
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Tree,"a/!3/b/!1",tree)
-
-                    assert.deepEqual(tree,{a:[2],b:[]},"tree ok")
-
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Object,"a.b.c/!1",obj)
-                    flow.optionValueFromUrl(terminalJs.StateTypes.Object,"a.c/+2",obj)
-
-                    assert.deepEqual(obj,{a:{b:{c:[1]},c:[2]}},"object ok")
-
-                })
-
-                QUnit.test("Unit test ValueFormUrl()",function (assert) {
-
-                    var flow = new TerminalJsFlow("fff",TerminalJsFlow.CmdSrcs.Cmd,1)
-
-                    terminalJs.urlParts = {main:""}
-
-                    flow.ValueFormUrl("main","你好/testes/%24testScripts")
-
-                    assert.equal(flow.ValueAfter["main"],"你好/testes/$testScripts","string ok")
-
-                    flow.ValueFormUrl("main","test")
-                    flow.ValueFormUrl("main","!test")
-
-                    assert.equal(flow.ValueAfter["main"],null,"string toggle ok")
-
-                    flow.ValueFormUrl("number","321")
-
-                    assert.equal(flow.ValueAfter["number"],"321","number ok")
-
-                    flow.ValueFormUrl("number","!321")
-
-                    assert.equal(flow.ValueAfter["number"],null,"number toggle ok")
-
-                    flow.ValueFormUrl("bool","true")
-
-                    assert.equal(flow.ValueAfter["bool"],true,"boolean true ok")
-
-                    flow.ValueFormUrl("bool","false")
-
-                    assert.equal(flow.ValueAfter["bool"],false,"boolean false ok")
-
-                    flow.ValueFormUrl("bool","toggle")
-
-                    assert.equal(flow.ValueAfter["bool"],true,"boolean toggle ok")
-
-                    flow.ValueFormUrl("array","1,2,3")
-
-                    assert.deepEqual(flow.ValueAfter["array"],[1,2,3],"number array ok")
-
-                    flow.ValueFormUrl("array","%20,abc,%24")
-
-                    assert.deepEqual(flow.ValueAfter["array"],[" ","abc","$"],"string array ok")
-
-                    flow.ValueFormUrl("tree","a/1,2,3/b/2,3,-1,1.2")
-
-                    assert.deepEqual(flow.ValueAfter["tree"],{a:[1,2,3],b:[2,3,-1,1.2]},"number tree ok")
-
-                    flow.ValueFormUrl("tree","b/%20,abc,%24/a/2,3,1")
-
-                    assert.deepEqual(flow.ValueAfter["tree"],{a:[2,3,1],b:[" ","abc","$"]},"string tree ok")
-
-                    flow.ValueFormUrl("object",encodeURIComponent(JSON.stringify({a:{c:[1,2,3],e:"123"}})))
-
-                    assert.deepEqual(flow.ValueAfter["object"],{a:{c:[1,2,3],e:"123"}},"json object ok")
-
-                    flow.ValueFormUrl("object","a.b/1,2,3/c/hihi/foo/bar")
-
-                    assert.deepEqual(flow.ValueAfter["object"],{a:{b:[1,2,3],c:[1,2,3],e:"123"},c:"hihi",foo:"bar"},"string object ok")
-
-                    flow.ValueFormUrl("testPreset","notSet")
-
-                    assert.deepEqual(terminalJs.PresetStateUrl["testPreset"],"$testPreset/notSet","Preset ok")
-
-
-
-                })
-
-                QUnit.test("Unit test CmdObjectInDepth()",function (assert) {
-
-                    var obj:any = {};
-
-                    assert.deepEqual(TerminalJsFlow.CmdObjectInDepth("a.c.e.v",obj),{LastKey:"v",Object:{}},"return ok")
-                    assert.deepEqual(obj,{a:{c:{e:{}}}},"object ok")
 
                 })
 
