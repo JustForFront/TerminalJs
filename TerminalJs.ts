@@ -2,9 +2,11 @@ var log = console.log
 
 export class TerminalJs{
 
+    static Debug:boolean = true
     static StateTypes = {"HiddenTree":-6,"HiddenArray":-5,"HiddenObject":-4,"HiddenNumber":-3,"HiddenBoolean":-2,"HiddenString":-1,
         "Auto":0,"String":1,"Boolean":2,"Number":3,"Object":4,"Array":5,"Tree":6}
     static ForceModes = {Replace:"replaceUrl",Push:"pushUrl",Auto:""}
+    CommandRecord:string[] = []
     StateTypes = TerminalJs.StateTypes
     States:any = {}
     StatesVals:{[stateName:string]:TerminalJsValue} = {}
@@ -25,6 +27,7 @@ export class TerminalJs{
     constructor(){
 
         this.AddCommand("/$stateName:string/$values:string...:",this.defaultCommandBehavior)
+        this.AddCommand("reset/$stateName:string:ALL",this.defaultValToUrl)
 
     }
     
@@ -408,11 +411,11 @@ export class TerminalJs{
 
         if(url){
 
-            (new TerminalJsFlow(url,TerminalJsFlow.CmdSrcs.Url)).Start()
+            this.ExeUrl(url)
 
         }
 
-        this.DefaultValToUrl()
+        this.ExeCmd("$reset")
 
         this.initalized = true
 
@@ -732,21 +735,33 @@ export class TerminalJs{
 
     }
 
-    DefaultValToUrl():void{
+    defaultValToUrl(params:TerminalJsCommandParamsAbstract,values:TerminalJsCommandAfterValueAbstract):void{
 
-        var i,parts = this.urlParts,vals = this.StatesVals,toDefault = {};
+        var that = terminalJs,i,parts,vals = that.StatesVals,stateName = params["stateName"].value,toDefault = {};
 
-        for(i in vals){
+        if(stateName=="ALL"){
 
-            if(parts[i]==undefined){
+            parts = that.urlParts
 
-                toDefault[i] = vals[i].GetDefault()
+            for(i in vals){
+
+                if(parts[i]==undefined){
+
+                    values[i] = vals[i].GetDefault()
+
+                }
 
             }
 
+        }else{
+
+            values[stateName] = vals[stateName].GetDefault()
+
         }
 
-        (new TerminalJsFlow(null,TerminalJsFlow.CmdSrcs.Cmd,1)).Apply(toDefault,false)
+
+
+        // (new TerminalJsFlow(null,TerminalJsFlow.CmdSrcs.Cmd,1)).Apply(toDefault,false)
 
     }
 
@@ -796,7 +811,11 @@ export class TerminalJs{
 
     }
 
-    MonitorDom(dom:HTMLElement=document.body):TerminalJs{
+    MonitorDom(dom:HTMLElement=document.body,handler:(url:string,classlist:DOMTokenList,e:Event)=>void=function (url:string,classlist:DOMTokenList) {
+
+        that.ExeCmd(url,classlist.contains("back"))
+
+    }):TerminalJs{
 
         var that = this,keyword = that.Keyword;
 
@@ -829,7 +848,7 @@ export class TerminalJs{
                             url.indexOf("//")!==0
                         )){
 
-                        that.ExeCmd(url,classlist.contains("back"))
+                        handler(url,classlist,e)
 
                         return false
 
@@ -849,7 +868,15 @@ export class TerminalJs{
 
     }
 
+    ExeUrl(url:string,isBack:boolean=false){
+
+        (new TerminalJsFlow(url,TerminalJsFlow.CmdSrcs.Url,isBack?-1:1)).Start()
+
+    }
+
     ExeCmd(cmd:string,isBack:boolean=false,forceMode:string=TerminalJs.ForceModes.Auto){
+
+        this.CommandRecord.push(cmd);
 
         (new TerminalJsFlow(cmd,TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Start(forceMode)
 
@@ -883,13 +910,13 @@ export class TerminalJs{
 
         window.onpopstate = function () {
 
-            let url = that.getUrl(),params:string[];
+            let url = that.getUrl(),params;
 
             if(that.currentUrl!=url){
 
                 params = hashRx.exec(url);
 
-                (new TerminalJsFlow(url,TerminalJsFlow.CmdSrcs.Url,checkDirection(params?params[1]:null))).Start()
+                that.ExeUrl(url,checkDirection(params?params[1]:null)==-1)
 
             }
 
@@ -942,29 +969,29 @@ export class TerminalJs{
 
     }
 
-    ForcePushUrl(urlOrModfunc:(state:any)=>void|string,isBack=false):void{
+    ForcePushUrl(urlOrModfunc:((state:any)=>void)|string,isBack=false):void{
 
         this.forceMod(TerminalJs.ForceModes.Push,urlOrModfunc,isBack)
 
     }
 
-    ForceReplaceUrl(urlOrModfunc:(state:any)=>void|string,isBack=false):void{
+    ForceReplaceUrl(urlOrModfunc:((state:any)=>void)|string,isBack=false):void{
 
         this.forceMod(TerminalJs.ForceModes.Replace,urlOrModfunc,isBack)
 
     }
 
-    /*private*/ forceMod(mode:string,urlOrModfunc:(newValue:any)=>void|string,isBack=false){
+    /*private*/ forceMod(mode:string,urlOrModfunc:((newValue:any)=>void)|string,isBack=false){
 
         if(typeof urlOrModfunc=="string"){
 
-            (new TerminalJsFlow(String(urlOrModfunc),TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Start(mode)
+            this.ExeCmd(String(urlOrModfunc),isBack,mode)
 
         }else{
 
-            var newValues:any = {}
+            var newValues:any = {};
 
-            urlOrModfunc(newValues);
+            (<(newValue:any)=>void>urlOrModfunc)(newValues);
 
             (new TerminalJsFlow(null,TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Apply(newValues,mode==TerminalJs.ForceModes.Push)
 
@@ -1548,6 +1575,86 @@ export class TerminalJsValue{
 
 }
 
-var terminalJs:TerminalJs = new TerminalJs();
+
+interface TerminalJsRecord{
+    CallString:string
+    ValueChanged?:any
+    ValueAfter?:any
+    UrlAfter?:any
+    Caller:any
+}
+
+export class TerminalJsDebug extends TerminalJs{
+
+    CommandTrace:TerminalJsRecord[] = []
+
+    constructor(){
+
+        super()
+
+        var that = this
+
+        window["TerminalJsTrace"] = function () {
+
+            console.log(that.CommandTrace)
+
+        }
+
+
+    }
+
+    ExeUrl(url:string,isBack:boolean=false){
+
+        this.CommandTrace.push({CallString:url,Caller:"URL",ValueAfter:{},UrlAfter:{}});
+
+        (new TerminalJsFlow(url,TerminalJsFlow.CmdSrcs.Url,isBack?-1:1)).Start()
+
+    }
+
+    ExeCmd(cmd:string,isBack:boolean=false,forceMode:string=TerminalJs.ForceModes.Auto,$caller:EventTarget=null){
+
+        this.CommandTrace.push({CallString:cmd,Caller:$caller?$caller:this.ExeCmd.caller.toString(),ValueAfter:{},UrlAfter:{}})
+
+        super.ExeCmd(cmd,isBack,forceMode)
+
+    }
+
+    ApplyValuesAndCheckIfPush(values:any,clean:boolean=false):boolean{
+
+        var trace = this.CommandTrace[this.CommandTrace.length-1],valueAfter = trace.ValueAfter,urlAfter = trace.UrlAfter,
+            stateValues = this.StatesVals,urlParts = this.urlParts,isPush:boolean,i;
+
+        trace.ValueChanged = values
+
+        isPush = super.ApplyValuesAndCheckIfPush(values,clean)
+
+        for(i in values){
+
+            valueAfter[i] = stateValues[i].value
+            urlAfter[i] = urlParts[i]
+
+        }
+
+        return isPush
+
+    }
+
+    MonitorDom(dom:HTMLElement=document.body,handler:(url:string,classlist:DOMTokenList,e:Event)=>void=function (url:string,classlist:DOMTokenList,e:Event) {
+
+        that.ExeCmd(url,classlist.contains("back"),TerminalJs.ForceModes.Auto,e.currentTarget)
+
+    }):TerminalJs{
+
+        var that = this
+
+        super.MonitorDom(dom,handler)
+
+        return this
+
+    }
+
+}
+
+var terminalJs:TerminalJs = TerminalJs.Debug?new TerminalJsDebug():new TerminalJs();
 
 export {terminalJs};

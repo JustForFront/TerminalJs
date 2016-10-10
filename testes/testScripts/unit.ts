@@ -98,7 +98,7 @@ var log = console.log,
                 assert.equal(terminalJs.StatesVals["number"].value,null,"before init value")
                 assert.equal(terminalJs.StatesVals["number"].callbacks[0],callback,"callback")
 
-                terminalJs.StatesVals["number"].SetDefault(false)
+                terminalJs.ForceReplaceUrl("$reset/number")
 
                 assert.equal(terminalJs.StatesVals["number"].value,0,"after init value")
                 assert.equal(test,true,"after callback")
@@ -210,15 +210,16 @@ var log = console.log,
 
             })
 
-            QUnit.test("Unit test DefaultValToUrl()",function (assert) {
+            QUnit.test("Unit test defaultValToUrl()",function (assert) {
 
                 
 
                 terminalJs.urlParts = {}
                 terminalJs.StatesVals["bool"].value = false
 
-                terminalJs.DefaultValToUrl()
+                // terminalJs.defaultValToUrl()
 
+                terminalJs.ExeCmd("$reset")
 
                 assert.equal(terminalJs.GetStateValue("main"),"abc","string")
                 assert.equal(terminalJs.GetStateValue("hiddenstring"),"hide","hiddenstring")
@@ -247,7 +248,7 @@ var log = console.log,
 
                 var len = history.length
 
-                terminalJs.DefaultValToUrl()
+                terminalJs.ExeCmd("$reset")
                 terminalJs.ToUrl("number",234)
                 assert.equal(terminalJs.currentUrl,"/abc/$bool/true/$array/1,2,3/$tree/a/1,2,3/$object/%7B%22a%22%3A%7B%22b%22%3A1%7D%7D/$number/234","url push ok")
                 assert.equal(history.length,len+1,"push history len ok")
@@ -569,7 +570,7 @@ var log = console.log,
 
                 terminalJs.AddCommand("addToArray/$toAdd:number...",bhArr,false)
 
-                assert.equal(terminalJs.CustomCommands.length,4,"command added")
+                assert.equal(terminalJs.CustomCommands.length,5,"command added")
                 assert.equal(terminalJs.CustomCommands[2].CommandStr,"addToNumber","command string 1 ok")
                 assert.equal(terminalJs.CustomCommands[2].Params["toAdd"].type,"number","command 1 param ok")
                 assert.equal(terminalJs.CustomCommands[2].BehaviorFunc,bhNum,"command 1 behavior ok")
