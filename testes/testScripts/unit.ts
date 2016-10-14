@@ -201,9 +201,7 @@ var log = console.log,
             })
 
             QUnit.test("Unit test getFullUrl()",function (assert) {
-
                 
-
                 terminalJs.ExeCmd("test%24Main/$bool/true/$number/123")
 
                 assert.equal(terminalJs.getFullUrl(),"/$number/123/test%24Main/$bool/true","string ok")

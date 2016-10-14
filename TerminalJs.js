@@ -26,10 +26,9 @@ define(["require", "exports"], function (require, exports) {
             this.AddCommand("reset/$stateName:string:ALL", this.defaultValToUrl);
         }
         TerminalJs.prototype.defaultCommandBehavior = function (params, values) {
-            var that = terminalJs, stateName = params["stateName"].value, stateValues = params["values"].value, vLen = stateValues.length, valStr, stateVal = that.StatesVals[stateName], val, res, i, tmp;
+            var that = terminalJs, stateName = params["stateName"].value, stateValues = params["values"].value, vLen = stateValues.length, valStr = stateValues.join("/"), stateVal = that.StatesVals[stateName], val, res, i, tmp;
             if (stateVal != undefined) {
                 val = values[stateName] === undefined ? stateVal.value : values[stateName];
-                valStr = stateValues.join("/");
                 if (that.urlParts[stateName] != stateName + "/" + valStr) {
                     var type = stateVal.type, types = that.StateTypes;
                     if (valStr == "") {
@@ -46,7 +45,8 @@ define(["require", "exports"], function (require, exports) {
                     }
                     else {
                         switch (type) {
-                            case types.String || types.HiddenString:
+                            case types.String:
+                            case types.HiddenString:
                                 if (valStr.indexOf("!") === 0) {
                                     valStr = decodeURIComponent(valStr.substr(1));
                                     val = valStr == val ? null : valStr;
@@ -55,7 +55,8 @@ define(["require", "exports"], function (require, exports) {
                                     val = terminalJs.decodeKeyword(decodeURIComponent(valStr ? valStr : null));
                                 }
                                 break;
-                            case types.Number || types.HiddenNumber:
+                            case types.Number:
+                            case types.HiddenNumber:
                                 if (valStr.indexOf("!") === 0) {
                                     i = Number(valStr.substr(1));
                                     val = i === val ? null : i;
@@ -64,10 +65,12 @@ define(["require", "exports"], function (require, exports) {
                                     val = Number(valStr);
                                 }
                                 break;
-                            case types.Boolean || types.HiddenBoolean:
+                            case types.Boolean:
+                            case types.HiddenBoolean:
                                 val = valStr == "toggle" ? !val : valStr == "true";
                                 break;
-                            case types.Array || types.HiddenArray:
+                            case types.Array:
+                            case types.HiddenArray:
                                 if (/^[0-9\|\.\-]+$/.test(valStr)) {
                                     val = valStr.split("|").map(Number);
                                 }
@@ -75,7 +78,8 @@ define(["require", "exports"], function (require, exports) {
                                     val = valStr ? valStr.split(",").map(decodeURIComponent) : [];
                                 }
                                 break;
-                            case types.Tree || types.HiddenTree:
+                            case types.Tree:
+                            case types.HiddenTree:
                                 if (valStr) {
                                     val = val ? val : {};
                                     for (i = 0; i < vLen; i += 2) {
@@ -93,7 +97,10 @@ define(["require", "exports"], function (require, exports) {
                                 }
                                 break;
                             default:
-                                if (valStr.indexOf("%7B") == 0 || valStr.indexOf("%5B") == 0) {
+                                if (valStr.indexOf("{") == 0 || valStr.indexOf("[") == 0) {
+                                    val = JSON.parse(valStr.trim());
+                                }
+                                else if (valStr.indexOf("%7B") == 0 || valStr.indexOf("%5B") == 0) {
                                     val = JSON.parse(decodeURIComponent(valStr).trim());
                                 }
                                 else {
@@ -121,7 +128,7 @@ define(["require", "exports"], function (require, exports) {
                 }
             }
             else {
-                terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword + stateName + "/" + stateValues;
+                terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword + stateName + "/" + valStr;
             }
         };
         TerminalJs.prototype.optionValueFromUrl = function (type, valStr, stateNode) {
@@ -160,7 +167,8 @@ define(["require", "exports"], function (require, exports) {
                 }
             }, vals, nodes, params;
             switch (type) {
-                case types.Tree || types.HiddenTree:
+                case types.Tree:
+                case types.HiddenTree:
                     params = valStr.split("/");
                     for (i = 0, c = params.length; i < c; i += 2) {
                         vals = params[(i + 1)].substr(1).split(",");
@@ -182,7 +190,8 @@ define(["require", "exports"], function (require, exports) {
                         }
                     }
                     break;
-                case types.Object || types.HiddenObject:
+                case types.Object:
+                case types.HiddenObject:
                     params = valStr.split("/");
                     for (i = 0, c = params.length; i < c; i += 2) {
                         vals = params[(i + 1)].substr(1).split(",");
@@ -247,12 +256,14 @@ define(["require", "exports"], function (require, exports) {
             return query_string;
         };
         TerminalJs.prototype.Init = function () {
-            var url = this.getUrl();
-            if (url) {
-                this.ExeUrl(url);
+            if (!this.initalized) {
+                var url = this.getUrl();
+                if (url) {
+                    this.ExeUrl(url);
+                }
+                this.ExeCmd("$reset");
+                this.initalized = true;
             }
-            this.ExeCmd("$reset");
-            this.initalized = true;
             return this;
         };
         TerminalJs.prototype.historyHandler = function (newUrl, presetDirection) {
@@ -694,7 +705,7 @@ define(["require", "exports"], function (require, exports) {
             return false;
         };
         TerminalJsCommand.prototype.MatchParams = function (input) {
-            var inputParams = input.split("/"), i, params = this.Params, seek = this.CommandStr ? 1 : 0, lastParam = this.ParamCount;
+            var inputParams = input.split("/"), i, params = this.Params, seek = this.CommandStr ? 1 : 0, lastParam = this.ParamCount - (1 - seek);
             if (inputParams.length > this.MustParamCount - 1 + seek) {
                 for (i in params) {
                     if (lastParam == seek) {
@@ -811,7 +822,7 @@ define(["require", "exports"], function (require, exports) {
             }
             while ((match = rx.exec(url)) != null) {
                 for (i = 0; i < commandCount; i++) {
-                    if (commands[i].Match(match[1], afterVal)) {
+                    if (commands[i].Match(match[1].replace(/^\/|\/$/g, ""), afterVal)) {
                         break;
                     }
                 }
@@ -926,7 +937,7 @@ define(["require", "exports"], function (require, exports) {
         TerminalJsDebug.prototype.MonitorDom = function (dom, handler) {
             if (dom === void 0) { dom = document.body; }
             if (handler === void 0) { handler = function (url, classlist, e) {
-                that.ExeCmd(url, classlist.contains("back"), TerminalJs.ForceModes.Auto, e.currentTarget);
+                that.ExeCmd(url, classlist.contains("back"), TerminalJs.ForceModes.Auto, e.target);
             }; }
             var that = this;
             _super.prototype.MonitorDom.call(this, dom, handler);

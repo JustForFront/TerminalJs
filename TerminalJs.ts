@@ -30,16 +30,15 @@ export class TerminalJs{
         this.AddCommand("reset/$stateName:string:ALL",this.defaultValToUrl)
 
     }
-    
+
     defaultCommandBehavior(params:TerminalJsCommandParamsAbstract,values:TerminalJsCommandAfterValueAbstract){
 
-        var that = terminalJs,stateName = params["stateName"].value,stateValues = <string[]>params["values"].value,vLen = stateValues.length,valStr,
+        var that = terminalJs,stateName = params["stateName"].value,stateValues = <string[]>params["values"].value,vLen = stateValues.length,valStr = stateValues.join("/"),
             stateVal = that.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,tmp:any;
 
         if(stateVal!=undefined){
 
             val = values[stateName]===undefined?stateVal.value:values[stateName]
-            valStr = stateValues.join("/")
 
             if(that.urlParts[stateName]!=stateName+"/"+valStr){
 
@@ -68,7 +67,8 @@ export class TerminalJs{
 
                     switch (type){
 
-                        case types.String||types.HiddenString:
+                        case types.String:
+                        case types.HiddenString:
 
                             if(valStr.indexOf("!")===0){
 
@@ -82,7 +82,8 @@ export class TerminalJs{
                             }
 
                             break
-                        case types.Number||types.HiddenNumber:
+                        case types.Number:
+                        case types.HiddenNumber:
 
                             if(valStr.indexOf("!")===0){
 
@@ -96,10 +97,12 @@ export class TerminalJs{
                             }
 
                             break
-                        case types.Boolean||types.HiddenBoolean:
+                        case types.Boolean:
+                        case types.HiddenBoolean:
                             val = valStr=="toggle"?!val:valStr=="true"
                             break
-                        case types.Array||types.HiddenArray:
+                        case types.Array:
+                        case types.HiddenArray:
 
                             if(/^[0-9\|\.\-]+$/.test(valStr)){
 
@@ -112,7 +115,8 @@ export class TerminalJs{
                             }
 
                             break
-                        case types.Tree||types.HiddenTree:
+                        case types.Tree:
+                        case types.HiddenTree:
 
                             if(valStr){
 
@@ -143,8 +147,11 @@ export class TerminalJs{
                             break
                         default:
 
+                            if(valStr.indexOf("{")==0||valStr.indexOf("[")==0){
 
-                            if(valStr.indexOf("%7B")==0||valStr.indexOf("%5B")==0){
+                                val = JSON.parse(valStr.trim())
+
+                            }else if(valStr.indexOf("%7B")==0||valStr.indexOf("%5B")==0){
 
                                 val = JSON.parse(decodeURIComponent(valStr).trim())
 
@@ -190,7 +197,7 @@ export class TerminalJs{
 
         }else{
 
-            terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword+stateName+"/"+stateValues
+            terminalJs.PresetStateUrl[stateName] = terminalJs.Keyword+stateName+"/"+valStr
 
         }
 
@@ -271,7 +278,8 @@ export class TerminalJs{
 
         switch (type){
 
-            case types.Tree||types.HiddenTree:
+            case types.Tree:
+            case types.HiddenTree:
                 params = valStr.split("/")
 
                 for(i=0,c=params.length;i<c;i+=2){
@@ -307,7 +315,8 @@ export class TerminalJs{
 
                 break
 
-            case types.Object||types.HiddenObject:
+            case types.Object:
+            case types.HiddenObject:
 
                 params = valStr.split("/")
 
@@ -407,17 +416,23 @@ export class TerminalJs{
 
     Init():TerminalJs{
 
-        var url = this.getUrl();
+        if(!this.initalized){
 
-        if(url){
+            var url = this.getUrl();
 
-            this.ExeUrl(url)
+            if(url){
+
+                this.ExeUrl(url)
+
+            }
+
+            this.ExeCmd("$reset")
+
+            this.initalized = true
 
         }
 
-        this.ExeCmd("$reset")
 
-        this.initalized = true
 
         return this
 
@@ -611,129 +626,129 @@ export class TerminalJs{
 
     /*private*/ parseValType(val:any):number{
 
-        var types = this.StateTypes,i;
+    var types = this.StateTypes,i;
 
-        switch(typeof val){
+    switch(typeof val){
 
-            case "object":
-                if(val instanceof Array){
+        case "object":
+            if(val instanceof Array){
 
-                    return types.Array
+                return types.Array
 
-                }else{
+            }else{
 
-                    for(i in val){
+                for(i in val){
 
-                        return val[i] instanceof Array?types.Tree:types.Object
-
-                    }
+                    return val[i] instanceof Array?types.Tree:types.Object
 
                 }
-            case "boolean":
-                return types.Boolean
-            case "number":
-                return types.Number
-            default:
-                return types.String
 
-        }
+            }
+        case "boolean":
+            return types.Boolean
+        case "number":
+            return types.Number
+        default:
+            return types.String
 
     }
+
+}
 
     /*private*/ formatValUrl(stateName:string,stateVal:any):string{
 
-        if(stateVal===null||stateVal===undefined){
+    if(stateVal===null||stateVal===undefined){
 
-            return ""
-
-        }
-
-        var type = this.StatesVals[stateName].type,types = this.StateTypes,t;
-
-        if(type<types.Auto){
-
-            return ""
-
-        }
-
-        stateName = stateName=="main"?"":stateName+"/"
-
-        switch (type){
-
-            case types.String:
-
-                return stateName+this.encodeKeyword(stateVal.replace(/^\/|\/$/g,""))+""
-
-            case types.Number:
-
-                return stateName+stateVal+""
-
-            case types.Boolean:
-
-                return stateName+(stateVal?"true":"false")
-
-            case types.Array:
-
-                t = typeof stateVal[0]
-
-                if(t=="string"){
-
-                    return stateName+stateVal.map(encodeURIComponent).join(",")
-
-                }else if(t==undefined||t=="number") {
-
-                    return stateName+stateVal.join(",")
-
-                }
-
-            default:
-
-                var res:string[] = [],isTree = true;
-
-                for(let i in stateVal){
-
-                    if(stateVal[i] instanceof Array){
-
-                        res.push(i+"/"+stateVal[i].map(encodeURIComponent).join(","))
-
-                    }else{
-
-                        isTree = false;
-
-                        break;
-
-                    }
-
-                }
-
-                if(isTree){
-
-                    return stateName+res.join("/");
-
-                }
-
-                return stateName+encodeURIComponent(JSON.stringify(stateVal))
-
-        }
+        return ""
 
     }
+
+    var type = this.StatesVals[stateName].type,types = this.StateTypes,t;
+
+    if(type<types.Auto){
+
+        return ""
+
+    }
+
+    stateName = stateName=="main"?"":stateName+"/"
+
+    switch (type){
+
+        case types.String:
+
+            return stateName+this.encodeKeyword(stateVal.replace(/^\/|\/$/g,""))+""
+
+        case types.Number:
+
+            return stateName+stateVal+""
+
+        case types.Boolean:
+
+            return stateName+(stateVal?"true":"false")
+
+        case types.Array:
+
+            t = typeof stateVal[0]
+
+            if(t=="string"){
+
+                return stateName+stateVal.map(encodeURIComponent).join(",")
+
+            }else if(t==undefined||t=="number") {
+
+                return stateName+stateVal.join(",")
+
+            }
+
+        default:
+
+            var res:string[] = [],isTree = true;
+
+            for(let i in stateVal){
+
+                if(stateVal[i] instanceof Array){
+
+                    res.push(i+"/"+stateVal[i].map(encodeURIComponent).join(","))
+
+                }else{
+
+                    isTree = false;
+
+                    break;
+
+                }
+
+            }
+
+            if(isTree){
+
+                return stateName+res.join("/");
+
+            }
+
+            return stateName+encodeURIComponent(JSON.stringify(stateVal))
+
+    }
+
+}
 
 
     /*private*/ getFullUrl():string{
 
-        var parts = this.urlParts,url:string[] = [],keyword = this.Keyword;
+    var parts = this.urlParts,url:string[] = [],keyword = this.Keyword;
 
-        for(let i in parts){
+    for(let i in parts){
 
-            url.push((i=="main"?"":keyword)+parts[i])
-
-        }
-
-        this.currentUrl = "/"+url.join("/")
-
-        return this.currentUrl
+        url.push((i=="main"?"":keyword)+parts[i])
 
     }
+
+    this.currentUrl = "/"+url.join("/")
+
+    return this.currentUrl
+
+}
 
     defaultValToUrl(params:TerminalJsCommandParamsAbstract,values:TerminalJsCommandAfterValueAbstract):void{
 
@@ -887,26 +902,26 @@ export class TerminalJs{
         var that = this,hashRx = new RegExp("\\"+this.Keyword+"([0-9]+)$"),
             checkDirection = function (hashStr:string):number {
 
-            let res:number;
+                let res:number;
 
-            if(hashStr){
+                if(hashStr){
 
-                res = Number(hashStr)<that.hashNumber?-1:1
+                    res = Number(hashStr)<that.hashNumber?-1:1
 
-                that.hashNumber = Number(hashStr)
+                    that.hashNumber = Number(hashStr)
 
 
-            }else{
+                }else{
 
-                res = that.hashNumber==0?0:-1
+                    res = that.hashNumber==0?0:-1
 
-                that.hashNumber = 0
+                    that.hashNumber = 0
 
-            }
+                }
 
-            return  res
+                return  res
 
-        };
+            };
 
         window.onpopstate = function () {
 
@@ -956,18 +971,18 @@ export class TerminalJs{
 
     /*private*/ pushUrl(url:string){
 
-        this.hashNumber++
+    this.hashNumber++
 
-        history.pushState({},document.title,this.UrlSpiltter+url+this.Keyword+this.hashNumber)
+    history.pushState({},document.title,this.UrlSpiltter+url+this.Keyword+this.hashNumber)
 
 
-    }
+}
 
     /*private*/ replaceUrl(url:string){
 
-        history.replaceState({},document.title,this.UrlSpiltter+url+(this.hashNumber?this.Keyword+this.hashNumber:""))
+    history.replaceState({},document.title,this.UrlSpiltter+url+(this.hashNumber?this.Keyword+this.hashNumber:""))
 
-    }
+}
 
     ForcePushUrl(urlOrModfunc:((state:any)=>void)|string,isBack=false):void{
 
@@ -983,26 +998,26 @@ export class TerminalJs{
 
     /*private*/ forceMod(mode:string,urlOrModfunc:((newValue:any)=>void)|string,isBack=false){
 
-        if(typeof urlOrModfunc=="string"){
+    if(typeof urlOrModfunc=="string"){
 
-            this.ExeCmd(String(urlOrModfunc),isBack,mode)
+        this.ExeCmd(String(urlOrModfunc),isBack,mode)
 
-        }else{
+    }else{
 
-            var newValues:any = {};
+        var newValues:any = {};
 
-            (<(newValue:any)=>void>urlOrModfunc)(newValues);
+        (<(newValue:any)=>void>urlOrModfunc)(newValues);
 
-            (new TerminalJsFlow(null,TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Apply(newValues,mode==TerminalJs.ForceModes.Push)
-
-        }
+        (new TerminalJsFlow(null,TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Apply(newValues,mode==TerminalJs.ForceModes.Push)
 
     }
+
+}
 
     ApplyValuesAndCheckIfPush(values:any,clean:boolean=false):boolean{
 
         var statesValue = this.StatesVals,
-             i, isPush = false
+            i, isPush = false
 
         if (clean) {
 
@@ -1221,7 +1236,7 @@ export class TerminalJsCommand{
 
     MatchParams(input:string):boolean{
 
-        var inputParams = input.split("/"),i:string,params = this.Params,seek = this.CommandStr?1:0,lastParam = this.ParamCount;
+        var inputParams = input.split("/"),i:string,params = this.Params,seek = this.CommandStr?1:0,lastParam = this.ParamCount-(1-seek);
 
         if(inputParams.length>this.MustParamCount-1+seek){
 
@@ -1430,7 +1445,7 @@ export class TerminalJsFlow{
 
             for(i=0;i<commandCount;i++){
 
-                if(commands[i].Match(match[1],afterVal)){
+                if(commands[i].Match(match[1].replace(/^\/|\/$/g,""),afterVal)){
 
                     break
 
@@ -1440,7 +1455,7 @@ export class TerminalJsFlow{
 
             // if(!matchCommand(match[1])){
 
-                // this.ValueFormUrl(match[2],match[3].replace(/^\/|\/$/g,""))
+            // this.ValueFormUrl(match[2],match[3].replace(/^\/|\/$/g,""))
 
             // }
 
@@ -1551,27 +1566,27 @@ export class TerminalJsValue{
 
     /*private*/ checkValue(){
 
-        var that = this;
+    var that = this;
 
-        this.default(function (res:any,retryTime:number) {
+    this.default(function (res:any,retryTime:number) {
 
-            that.value = res
-            that.callback(res,false)
-            terminalJs.Callback(that.name,res,false)
+        that.value = res
+        that.callback(res,false)
+        terminalJs.Callback(that.name,res,false)
 
-            if(retryTime){
+        if(retryTime){
 
-                setTimeout(function () {
+            setTimeout(function () {
 
-                    that.checkValue()
+                that.checkValue()
 
-                },retryTime)
+            },retryTime)
 
-            }
+        }
 
-        })
+    })
 
-    }
+}
 
 }
 
@@ -1641,7 +1656,7 @@ export class TerminalJsDebug extends TerminalJs{
 
     MonitorDom(dom:HTMLElement=document.body,handler:(url:string,classlist:DOMTokenList,e:Event)=>void=function (url:string,classlist:DOMTokenList,e:Event) {
 
-        that.ExeCmd(url,classlist.contains("back"),TerminalJs.ForceModes.Auto,e.currentTarget)
+        that.ExeCmd(url,classlist.contains("back"),TerminalJs.ForceModes.Auto,e.target)
 
     }):TerminalJs{
 
