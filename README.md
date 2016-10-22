@@ -92,6 +92,12 @@ terminalJs.States["title"] = 'This is a title from JS setter, note that it's exp
 terminalJs.States["array"].push('I can also trigger setter!!!!')
 ```
 
+#### Execute command from HTML
+```html
+<script>terminalJs.MonitorDom()</script>
+<a href="$title/A title from a anchor">Change title state value!</a>
+```
+
 #### Execute command from js/ts
 ```javascript
 /*
@@ -100,6 +106,17 @@ param2:boolean = defaule:false, set to true if you want to tell the callback it 
 param3:string = defaule:, method to change url, empty string means follow states settings. See static var TerminalJs.ForceModes
 */
 terminalJs.ExeCmd('$title/I am a title from JAVASCRIPT')
+```
+
+#### Handle Url Changes
+```javascript
+terminalJs.MonitorUrl()
+
+terminalJs.ExeCmd('$title/title before') // title = 'title before'
+terminalJs.ExeCmd('$title/title after') // title = 'title after'
+
+history.back() // title = 'title before'
+
 ```
 
 ## STATE VALUE TYPES
