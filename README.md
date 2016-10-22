@@ -89,7 +89,7 @@ title = terminalJs.GetStateValue('title')
 #### Set state value by setter
 ```javascript
 terminalJs.States["title"] = 'This is a title from JS setter, note that it's experimental but works with array/object!'
-terminalJs.States["array"].push('I can also trigger setter!!!!')
+terminalJs.States["array"].push('I can also trigger setter!')
 ```
 
 #### Execute command from HTML
