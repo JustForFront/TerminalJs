@@ -3,60 +3,431 @@
   <head>
     <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
-    <link rel="stylesheet" type="text/css" href="stylesheets/github-dark.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
+
     <title>TerminalJs by JustForFront</title>
   </head>
 
   <body>
-    <div id="container">
+    <header>
       <div class="inner">
+        <h1>TerminalJs</h1>
+        <h2>Enable javascript application to change states with command or url</h2>
+        <a href="https://github.com/JustForFront/TerminalJs" class="button"><small>View project on</small> GitHub</a>
+      </div>
+    </header>
 
-        <header>
-          <h1>TerminalJs</h1>
-          <h2>Enable javascript application to change states with command or url</h2>
-        </header>
-
-        <section id="downloads" class="clearfix">
-          <a href="https://github.com/JustForFront/TerminalJs/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
-          <a href="https://github.com/JustForFront/TerminalJs/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
-          <a href="https://github.com/JustForFront/TerminalJs" id="view-on-github" class="button"><span>View on GitHub</span></a>
-        </section>
-
-        <hr>
-
-        <section id="main_content">
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
           <h1>
-<a id="terminaljs" class="anchor" href="#terminaljs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>TerminalJs</h1>
+<a id="terminaljs" class="anchor" href="#terminaljs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>TERMINALJS</h1>
 
 <p>TerminalJs enable javascript applications to change states with command or url</p>
 
 <p>See App.ts for basic usage.</p>
 
 <h2>
-<a id="roadmap" class="anchor" href="#roadmap" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Roadmap</h2>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>INTRODUCTION</h2>
+
+<p>State management should be easy and flexible. TerminalJs is created under this believe. It simply maintains all the states value under one tree and selectively sync them to URL. Then you control them through simple commands from Javascript call or anchor DOM attribute. Since it sync states to URL, all states changes are traceable, reversible and sharable. Thus your states will be in control and you may just focus on their changes callbacks to create actual app behaviors. Give it five minutes to see how it change the way you build apps.</p>
+
+<h3>
+<a id="its-a-terminal" class="anchor" href="#its-a-terminal" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>It’s a terminal!</h3>
+
+<p>Once all state changing attempts were able to run in form of commands, coding and tracing will be easier then ever. All simple value manipulation commands are pre-defined, additional commands are also welcome to fit any usage.</p>
+
+<h3>
+<a id="it-manage-url" class="anchor" href="#it-manage-url" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>It manage URL!</h3>
+
+<p>Delegated states are synced with URL. It enable the browser back, forward and bookmark features out of box. Plus the current URL could be share to anyone in any platform you like without any additional code.</p>
+
+<h3>
+<a id="its-flexible--lightweight" class="anchor" href="#its-flexible--lightweight" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>It’s flexible &amp; lightweight!</h3>
+
+<p>The package just got one single file in AMD or CMD package with ~30KB non-compressed file size. It preserve room for your favorite UI / MVVM frameworks to work with.</p>
+
+<h2>
+<a id="how-it-works" class="anchor" href="#how-it-works" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>HOW IT WORKS</h2>
+
+<h3>
+<a id="html" class="anchor" href="#html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>html</h3>
+
+<div class="highlight highlight-text-html-basic"><pre>&lt;<span class="pl-ent">h1</span> <span class="pl-e">id</span>=<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>&gt;&lt;/<span class="pl-ent">h1</span>&gt;
+&lt;<span class="pl-ent">a</span> <span class="pl-e">href</span>=<span class="pl-s"><span class="pl-pds">"</span>$title/!TerminalJs is really cool<span class="pl-pds">"</span></span>&gt;Make a command to terminal&lt;/<span class="pl-ent">a</span>&gt;
+&lt;<span class="pl-ent">script</span> <span class="pl-e">src</span>=<span class="pl-s"><span class="pl-pds">"</span>/require.js<span class="pl-pds">"</span></span>&gt;&lt;/<span class="pl-ent">script</span>&gt;
+<span class="pl-s1">&lt;<span class="pl-ent">script</span>&gt;</span>
+<span class="pl-s1">    <span class="pl-c1">require</span>([<span class="pl-s"><span class="pl-pds">"</span>App<span class="pl-pds">"</span></span>])</span>
+<span class="pl-s1">&lt;/<span class="pl-ent">script</span>&gt;</span></pre></div>
+
+<h3>
+<a id="appts" class="anchor" href="#appts" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>App.ts</h3>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-k">import</span> {<span class="pl-smi">terminalJs</span>} <span class="pl-k">from</span> <span class="pl-s"><span class="pl-pds">"</span>TerminalJs<span class="pl-pds">"</span></span>;
+
+<span class="pl-c">//define state and callback</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">AddState</span>(<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>TerminalJs<span class="pl-pds">"</span></span>,<span class="pl-k">function</span> (<span class="pl-smi">value</span>,<span class="pl-smi">isBack</span>) {
+
+    <span class="pl-c1">document</span>.<span class="pl-c1">getElementById</span>(<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>).<span class="pl-smi">innerHTML</span> <span class="pl-k">=</span> value
+
+})
+
+<span class="pl-c">//listen to dom click &amp; url pop state</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">MonitorUrl</span>().<span class="pl-en">MonitorDom</span>().<span class="pl-en">Init</span>()</pre></div>
+
+<h3>
+<a id="complied-appjs" class="anchor" href="#complied-appjs" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Complied App.js</h3>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-en">define</span>([<span class="pl-s"><span class="pl-pds">"</span>require<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>exports<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>TerminalJs<span class="pl-pds">"</span></span>], <span class="pl-k">function</span> (<span class="pl-smi">require</span>, <span class="pl-c1">exports</span>, <span class="pl-smi">TerminalJs_1</span>) {
+  <span class="pl-smi">TerminalJs_1</span>.<span class="pl-smi">terminalJs</span>.<span class="pl-en">AddState</span>(<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>TerminalJs<span class="pl-pds">"</span></span>, <span class="pl-k">function</span> (<span class="pl-smi">value</span>, <span class="pl-smi">isBack</span>) {
+      <span class="pl-c1">document</span>.<span class="pl-c1">getElementById</span>(<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>).<span class="pl-smi">innerHTML</span> <span class="pl-k">=</span> value;
+  });
+  <span class="pl-smi">TerminalJs_1</span>.<span class="pl-smi">terminalJs</span>.<span class="pl-en">MonitorUrl</span>().<span class="pl-en">MonitorDom</span>().<span class="pl-en">Init</span>();
+});</pre></div>
+
+<h2>
+<a id="basic-howto" class="anchor" href="#basic-howto" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>BASIC HOWTO</h2>
+
+<h4>
+<a id="set-state" class="anchor" href="#set-state" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Set state</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-c">/*</span>
+<span class="pl-c">param1:string = state name</span>
+<span class="pl-c">param2:any = default value, nullable</span>
+<span class="pl-c">param3:(newValue:any,isBack:boolean,stateName:string)=&gt;void=null = state value changed callback</span>
+<span class="pl-c">param4:boolean = default:true, set if want to use pushstate to sync url onchange. Use replaceState if false</span>
+<span class="pl-c">param5:number = default:0, value type of state, see type list below, 0 means auto detect from default value</span>
+<span class="pl-c">*/</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">AddState</span>(<span class="pl-s"><span class="pl-pds">"</span>state name<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>default value<span class="pl-pds">"</span></span>,<span class="pl-k">function</span> (<span class="pl-smi">changedValue</span>,<span class="pl-smi">isBack</span>,<span class="pl-smi">stateName</span>) {
+
+    <span class="pl-c">//do something on state change</span>
+
+})</pre></div>
+
+<h4>
+<a id="check-state-exist" class="anchor" href="#check-state-exist" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Check state exist</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-smi">terminalJs</span>.<span class="pl-en">StateExist</span>(<span class="pl-s"><span class="pl-pds">'</span>title<span class="pl-pds">'</span></span>) <span class="pl-c">//true</span></pre></div>
+
+<h4>
+<a id="get-state-value" class="anchor" href="#get-state-value" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Get state value</h4>
+
+<div class="highlight highlight-source-js"><pre>title <span class="pl-k">=</span> <span class="pl-smi">terminalJs</span>.<span class="pl-en">GetStateValue</span>(<span class="pl-s"><span class="pl-pds">'</span>title<span class="pl-pds">'</span></span>)</pre></div>
+
+<h4>
+<a id="set-state-value-by-setter" class="anchor" href="#set-state-value-by-setter" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Set state value by setter</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-smi">terminalJs</span>.<span class="pl-smi">States</span>[<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-s"><span class="pl-pds">'</span>This is a title from JS setter, note that it<span class="pl-pds">'</span></span>s experimental but works <span class="pl-k">with</span> array<span class="pl-k">/</span>object<span class="pl-k">!</span><span class="pl-s"><span class="pl-pds">'</span></span>
+<span class="pl-s">terminalJs.States["array"].push(<span class="pl-pds">'</span></span><span class="pl-c1">I</span> can also trigger setter<span class="pl-k">!</span><span class="pl-s"><span class="pl-pds">'</span><span class="pl-ii">)</span></span></pre></div>
+
+<h4>
+<a id="execute-command-from-html" class="anchor" href="#execute-command-from-html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Execute command from HTML</h4>
+
+<div class="highlight highlight-text-html-basic"><pre><span class="pl-s1">&lt;<span class="pl-ent">script</span>&gt;<span class="pl-smi">terminalJs</span>.<span class="pl-en">MonitorDom</span>()&lt;/<span class="pl-ent">script</span>&gt;</span>
+&lt;<span class="pl-ent">a</span> <span class="pl-e">href</span>=<span class="pl-s"><span class="pl-pds">"</span>$title/A title from a anchor<span class="pl-pds">"</span></span>&gt;Change title state value!&lt;/<span class="pl-ent">a</span>&gt;</pre></div>
+
+<h4>
+<a id="execute-command-from-jsts" class="anchor" href="#execute-command-from-jsts" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Execute command from js/ts</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-c">/*</span>
+<span class="pl-c">param1:string = a string command</span>
+<span class="pl-c">param2:boolean = defaule:false, set to true if you want to tell the callback it is a history back action</span>
+<span class="pl-c">param3:string = defaule:, method to change url, empty string means follow states settings. See static var TerminalJs.ForceModes</span>
+<span class="pl-c">*/</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$title/I am a title from JAVASCRIPT<span class="pl-pds">'</span></span>)</pre></div>
+
+<h4>
+<a id="handle-url-changes" class="anchor" href="#handle-url-changes" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Handle Url Changes</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-smi">terminalJs</span>.<span class="pl-en">MonitorUrl</span>()
+
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$title/title before<span class="pl-pds">'</span></span>) <span class="pl-c">// title = 'title before'</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$title/title after<span class="pl-pds">'</span></span>) <span class="pl-c">// title = 'title after'</span>
+
+<span class="pl-smi">history</span>.<span class="pl-c1">back</span>() <span class="pl-c">// title = 'title before'</span>
+</pre></div>
+
+<h4>
+<a id="debug" class="anchor" href="#debug" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Debug</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-c">//TerminalJs.ts</span>
+<span class="pl-c">//disable to improve preformance</span>
+<span class="pl-k">static</span> Debug<span class="pl-k">:</span>boolean <span class="pl-k">=</span> <span class="pl-c1">true</span>
+
+<span class="pl-en">TerminalJsTrace</span>() <span class="pl-c">//print trace records</span></pre></div>
+
+<h2>
+<a id="state-value-types" class="anchor" href="#state-value-types" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>STATE VALUE TYPES</h2>
+
+<table>
+<thead>
+<tr>
+<th>TYPE</th>
+<th>Sync to url</th>
+<th>VAR</th>
+<th>DESC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Auto</td>
+<td>T</td>
+<td>terminalJs.StateTypes.Auto</td>
+<td>Determine with default value</td>
+</tr>
+<tr>
+<td>String</td>
+<td>T</td>
+<td>terminalJs.StateTypes.String</td>
+<td>String</td>
+</tr>
+<tr>
+<td>Boolean</td>
+<td>T</td>
+<td>terminalJs.StateTypes.Boolean</td>
+<td>Boolean</td>
+</tr>
+<tr>
+<td>Number</td>
+<td>T</td>
+<td>terminalJs.StateTypes.Number</td>
+<td>Number</td>
+</tr>
+<tr>
+<td>Object</td>
+<td>T</td>
+<td>terminalJs.StateTypes.Object</td>
+<td>Free structured object</td>
+</tr>
+<tr>
+<td>Array</td>
+<td>T</td>
+<td>terminalJs.StateTypes.Array</td>
+<td>Array of numbers or strings</td>
+</tr>
+<tr>
+<td>Tree</td>
+<td>T</td>
+<td>terminalJs.StateTypes.Tree</td>
+<td>A object contain string keys and array values</td>
+</tr>
+<tr>
+<td>Hidden String</td>
+<td>F</td>
+<td>terminalJs.StateTypes.HiddenString</td>
+<td>String</td>
+</tr>
+<tr>
+<td>Hidden Boolean</td>
+<td>F</td>
+<td>terminalJs.StateTypes.HiddenBoolean</td>
+<td>Boolean</td>
+</tr>
+<tr>
+<td>Hidden Number</td>
+<td>F</td>
+<td>terminalJs.StateTypes.HiddenNumber</td>
+<td>Number</td>
+</tr>
+<tr>
+<td>Hidden Object</td>
+<td>F</td>
+<td>terminalJs.StateTypes.HiddenObject</td>
+<td>Free structured object</td>
+</tr>
+<tr>
+<td>Hidden Array</td>
+<td>F</td>
+<td>terminalJs.StateTypes.HiddenArray</td>
+<td>Array of numbers or strings</td>
+</tr>
+<tr>
+<td>Hidden Tree</td>
+<td>F</td>
+<td>terminalJs.StateTypes.HiddenTree</td>
+<td>A object contain string keys and array values</td>
+</tr>
+</tbody>
+</table>
+
+<h2>
+<a id="basic-command" class="anchor" href="#basic-command" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>BASIC COMMAND</h2>
+
+<h4>
+<a id="change-value" class="anchor" href="#change-value" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Change value</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$string/Change to this string<span class="pl-pds">'</span></span>) <span class="pl-c">// string = 'Change to this string'</span>
+
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$number/123.45<span class="pl-pds">'</span></span>) <span class="pl-c">// number = 123.45</span>
+
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$boolean/true<span class="pl-pds">'</span></span>) <span class="pl-c">// boolean = true</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$boolean/toggle<span class="pl-pds">'</span></span>) <span class="pl-c">// boolean = false</span>
+
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$array/1|2|3<span class="pl-pds">'</span></span>) <span class="pl-c">// set number, array = [1,2,3]</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$array/a,b,c<span class="pl-pds">'</span></span>) <span class="pl-c">// set strings, array = ["a","b","c"]</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$array/+d<span class="pl-pds">'</span></span>) <span class="pl-c">// add value, array = ["a","b","c","d"]</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$array/-a<span class="pl-pds">'</span></span>) <span class="pl-c">// remove value, array = ["b","c","d"]</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$array/!a,c<span class="pl-pds">'</span></span>) <span class="pl-c">// toggle values, array = ["a","b","d"]</span>
+
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$tree/numbers/1|2|3<span class="pl-pds">'</span></span>) <span class="pl-c">// set number, tree = {numbers:[1,2,3]}</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$tree/strings/a,b,c<span class="pl-pds">'</span></span>) <span class="pl-c">// set strings, tree = {numbers:[1,2,3],strings:["a","b","c"]}</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$tree/strings/+d<span class="pl-pds">'</span></span>) <span class="pl-c">// add value, tree = {numbers:[1,2,3],strings:["a","b","c","d"]}</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$tree/strings/-a<span class="pl-pds">'</span></span>) <span class="pl-c">// remove value, tree = {numbers:[1,2,3],strings:["b","c","d"]}</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$tree/strings/!a,c<span class="pl-pds">'</span></span>) <span class="pl-c">// toggle values, tree = {numbers:[1,2,3],strings:["a","b","d"]}</span>
+
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$object/{"setByJson":{"is":"ok"}}<span class="pl-pds">'</span></span>) <span class="pl-c">// object = {setByJson:{is:"ok"}}</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$object/byStr.is/also ok<span class="pl-pds">'</span></span>) <span class="pl-c">// object = {setByJson:{is:"ok"},byStr:{is:"also ok"}}</span>
+
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>$string/combine command string/$number/234<span class="pl-pds">'</span></span>) <span class="pl-c">// string = 'combine command string', number = 234</span>
+
+<span class="pl-c">//PS: commands to unset state will add to queue until the state is set</span></pre></div>
+
+<h4>
+<a id="reset-to-default-value" class="anchor" href="#reset-to-default-value" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Reset to default value</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>reset/title<span class="pl-pds">'</span></span>) <span class="pl-c">//reset title state, title = 'TerminalJs'</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ExeCmd</span>(<span class="pl-s"><span class="pl-pds">'</span>reset<span class="pl-pds">'</span></span>) <span class="pl-c">//reset all state</span></pre></div>
+
+<h2>
+<a id="advanced-howto" class="anchor" href="#advanced-howto" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ADVANCED HOWTO</h2>
+
+<h4>
+<a id="add-callback-to-state" class="anchor" href="#add-callback-to-state" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Add callback to state</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-c">/*</span>
+<span class="pl-c">param1:string = state name</span>
+<span class="pl-c">param2:(newValue:any,isBack:boolean,stateName:string)=&gt;void=null = state value changed callback</span>
+<span class="pl-c">*/</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">AddCallback</span>(<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>,<span class="pl-k">function</span>(<span class="pl-smi">val</span><span class="pl-k">:</span><span class="pl-smi">any</span>,<span class="pl-smi">isBack</span><span class="pl-k">:</span><span class="pl-smi">boolean</span>,<span class="pl-smi">stateName</span><span class="pl-k">:</span><span class="pl-smi">string</span>)=&gt;void){
+
+  <span class="pl-c1">document</span>.<span class="pl-c1">getElementById</span>(<span class="pl-s"><span class="pl-pds">"</span>footer_title<span class="pl-pds">"</span></span>).<span class="pl-smi">innerHTML</span> <span class="pl-k">=</span> value
+
+})</pre></div>
+
+<h4>
+<a id="remove-callback-from-state" class="anchor" href="#remove-callback-from-state" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Remove callback from state</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-c">/*</span>
+<span class="pl-c">param1:string = state name</span>
+<span class="pl-c">param2:(newValue:any,isBack:boolean,stateName:string)=&gt;void=null = callback function to remove</span>
+<span class="pl-c">*/</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">RemoveCallback</span>(<span class="pl-s"><span class="pl-pds">"</span>*<span class="pl-pds">"</span></span>,changeListenor)</pre></div>
+
+<h4>
+<a id="custom-command" class="anchor" href="#custom-command" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Custom command</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-c">/*</span>
+<span class="pl-c">param1:string = command syntax, see COMMAND SYNTAX section</span>
+<span class="pl-c">param2:boolean = defaule:false, set to true if you want for use pushState</span>
+<span class="pl-c">*/</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">AddCommand</span>(<span class="pl-s"><span class="pl-pds">"</span>null/$stateName:string:ALL<span class="pl-pds">"</span></span>,<span class="pl-en">defaultValToUrl</span>(<span class="pl-smi">params</span>,<span class="pl-smi">values</span>){
+
+  <span class="pl-k">var</span> stateName <span class="pl-k">=</span> params[<span class="pl-s"><span class="pl-pds">"</span>stateName<span class="pl-pds">"</span></span>].<span class="pl-c1">value</span>
+
+  <span class="pl-k">if</span>(stateName<span class="pl-k">==</span><span class="pl-s"><span class="pl-pds">"</span>ALL<span class="pl-pds">"</span></span>){
+
+    <span class="pl-k">for</span>(i <span class="pl-k">in</span> vals){
+
+      values[i] <span class="pl-k">=</span> <span class="pl-c1">null</span>
+
+    }
+
+  }<span class="pl-k">else</span>{
+
+    values[stateName] <span class="pl-k">=</span> <span class="pl-c1">null</span>
+
+  }
+
+},<span class="pl-c1">true</span>)</pre></div>
+
+<h4>
+<a id="force-replacestate" class="anchor" href="#force-replacestate" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Force replaceState</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-c">/*</span>
+<span class="pl-c">param1:string|(stateValues:any)=&gt;void = a string command / a function to set new value(s) to state(s)</span>
+<span class="pl-c">param2:boolean = defaule:false, set to true if you want to tell the callback it is a history back action</span>
+<span class="pl-c">*/</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ForceReplaceUrl</span>(<span class="pl-k">function</span>(<span class="pl-smi">stateValues</span><span class="pl-k">:</span><span class="pl-smi">any</span>){
+
+  stateValues[<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-smi">terminalJs</span>.<span class="pl-en">GetStateValue</span>(<span class="pl-s"><span class="pl-pds">'</span>title<span class="pl-pds">'</span></span>)<span class="pl-k">+</span><span class="pl-s"><span class="pl-pds">"</span> add something<span class="pl-pds">"</span></span>
+
+},<span class="pl-c1">false</span>);</pre></div>
+
+<h4>
+<a id="force-pushstate" class="anchor" href="#force-pushstate" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Force pushState</h4>
+
+<div class="highlight highlight-source-js"><pre><span class="pl-c">/*</span>
+<span class="pl-c">param1:string|(stateValues:any)=&gt;void = a string command / a function to set new value(s) to state(s)</span>
+<span class="pl-c">param2:boolean = defaule:false, set to true if you want to tell the callback it is a history back action</span>
+<span class="pl-c">*/</span>
+<span class="pl-smi">terminalJs</span>.<span class="pl-en">ForcePushUrl</span>(<span class="pl-k">function</span>(<span class="pl-smi">stateValues</span><span class="pl-k">:</span><span class="pl-smi">any</span>){
+
+  stateValues[<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>] <span class="pl-k">=</span> <span class="pl-smi">terminalJs</span>.<span class="pl-en">GetStateValue</span>(<span class="pl-s"><span class="pl-pds">'</span>title<span class="pl-pds">'</span></span>)<span class="pl-k">+</span><span class="pl-s"><span class="pl-pds">"</span> add something and make browser history forward<span class="pl-pds">"</span></span>
+
+},<span class="pl-c1">false</span>);</pre></div>
+
+<h2>
+<a id="command-syntax" class="anchor" href="#command-syntax" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>COMMAND SYNTAX</h2>
+
+<h4>
+<a id="syntax" class="anchor" href="#syntax" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Syntax</h4>
+
+<pre><code>action/$varName1:Type[string|number|boolean|json](optional):defaultValue(optional)/$varName2...
+</code></pre>
+
+<h4>
+<a id="example" class="anchor" href="#example" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example</h4>
+
+<pre><code>logined/$userId:number/$userName:string/$userGroup:number:0
+
+will match
+
+logined/1/Foo/2
+logined/2/Bar
+</code></pre>
+
+<p>*The vars have default value must place after the vars don't</p>
+
+<h2>
+<a id="roadmap" class="anchor" href="#roadmap" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ROADMAP</h2>
 
 <ul>
 <li>[x] 2016-09 wk 5 <strong>Unit testes</strong>
 </li>
-<li>[ ] 2016-10 wk 1 Command tracer</li>
-<li>[ ] 2016-10 wk 2 Document</li>
-<li>[ ] 2016-10 wk 3 1.0 Beta</li>
+<li>[x] 2016-10 wk 1 <strong>Rewrite command system</strong>
+</li>
+<li>[x] 2016-10 wk 2 <strong>Command tracer</strong>
+</li>
+<li>[ ] 2016-10 wk 3 Document</li>
+<li>[ ] 2016-10 wk 4 1.0 Beta</li>
 </ul>
         </section>
 
-        <footer>
-          TerminalJs is maintained by <a href="https://github.com/JustForFront">JustForFront</a><br>
-          This page was generated by <a href="https://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.
-        </footer>
+        <aside id="sidebar">
+          <a href="https://github.com/JustForFront/TerminalJs/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/JustForFront/TerminalJs/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
 
-        
+          <p class="repo-owner"><a href="https://github.com/JustForFront/TerminalJs"></a> is maintained by <a href="https://github.com/JustForFront">JustForFront</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
       </div>
     </div>
+
+  
   </body>
 </html>
