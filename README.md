@@ -1,9 +1,5 @@
 # TERMINALJS
 
-TerminalJs enable javascript applications to change states with command or url
-
-See App.ts for basic usage.
-
 ## INTRODUCTION
 
 State management should be easy and flexible. TerminalJs is created under this believe. It simply maintains all the states value under one tree and selectively sync them to URL. Then you control them through simple commands from Javascript call or anchor DOM attribute. Since it sync states to URL, all states changes are traceable, reversible and sharable. Thus your states will be in control and you may just focus on their changes callbacks to create actual app behaviors. Give it five minutes to see how it change the way you build apps.
