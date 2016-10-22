@@ -119,6 +119,15 @@ history.back() // title = 'title before'
 
 ```
 
+#### Debug
+```javascript
+//TerminalJs.ts
+//disable to improve preformance
+static Debug:boolean = true
+
+TerminalJsTrace() //print trace records
+```
+
 ## STATE VALUE TYPES
 
 TYPE | Sync to url | VAR | DESC
