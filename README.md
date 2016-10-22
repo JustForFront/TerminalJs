@@ -245,7 +245,13 @@ action/$varName1:Type[string|number|boolean|json](optional):defaultValue(optiona
 
 ```
 logined/$userId:number/$userName:string/$userGroup:number:0
+
+will match
+
+logined/1/Foo/2
+logined/2/Bar
 ```
+*The vars have default value must place after the vars don't
 
 ## ROADMAP
 - [x] 2016-09 wk 5 **Unit testes**
