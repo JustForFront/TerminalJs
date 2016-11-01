@@ -6,6 +6,7 @@ export class TerminalJs{
     static StateTypes = {"HiddenTree":-6,"HiddenArray":-5,"HiddenObject":-4,"HiddenNumber":-3,"HiddenBoolean":-2,"HiddenString":-1,
         "Auto":0,"String":1,"Boolean":2,"Number":3,"Object":4,"Array":5,"Tree":6}
     static ForceModes = {Replace:"replaceUrl",Push:"pushUrl",Auto:""}
+    DomCmdAttribute:string = "href"
     CommandRecord:string[] = []
     StateTypes = TerminalJs.StateTypes
     States:any = {}
@@ -573,9 +574,9 @@ export class TerminalJs{
 
     }
 
-    RemoveCallback(stateNameStartToAll:string,callback:(val:any,isBack:boolean,stateName:string)=>void):TerminalJs{
+    RemoveCallback(stateNameStarToAll:string,callback:(val:any,isBack:boolean,stateName:string)=>void):TerminalJs{
 
-        if(stateNameStartToAll=="*"){
+        if(stateNameStarToAll=="*"){
 
             this.callbacks.splice(this.callbacks.indexOf(callback),1)
 
@@ -583,7 +584,7 @@ export class TerminalJs{
 
         }else{
 
-            this.StatesVals[stateNameStartToAll].RemoveCallback(callback)
+            this.StatesVals[stateNameStarToAll].RemoveCallback(callback)
 
         }
 
@@ -828,11 +829,15 @@ export class TerminalJs{
 
     MonitorDom(dom:HTMLElement=document.body,handler:(url:string,classlist:DOMTokenList,e:Event)=>void=function (url:string,classlist:DOMTokenList) {
 
-        that.ExeCmd(url,classlist.contains("back"))
+        that.ExeCmd(url,classlist.contains("back"),
+            classlist.contains("replaceUrl")?
+                TerminalJs.ForceModes.Replace:(
+                classlist.contains("pushUrl")?TerminalJs.ForceModes.Push:TerminalJs.ForceModes.Auto
+            ))
 
     }):TerminalJs{
 
-        var that = this,keyword = that.Keyword;
+        var that = this,keyword = that.Keyword,domCmdAttribute = this.DomCmdAttribute,splitter = this.UrlSpiltter;
 
         dom.addEventListener("click",function (e:Event) {
 
@@ -849,19 +854,21 @@ export class TerminalJs{
 
                 }
 
-                var url : string = dom.getAttribute("href"),classlist = dom.classList;
+                var url : string = dom.getAttribute(domCmdAttribute),classlist = dom.classList,urlParams:string[];
 
-                if(!classlist.contains("external")){
+                if(!classlist.contains("external")||
+                    (
+                        url.indexOf("://")!==-1&&
+                        url.indexOf("http://")!==0&&
+                        url.indexOf("https://")!==0&&
+                        url.indexOf("ftp://")!==0&&
+                        url.indexOf("file://")!==0
+                    )){
 
-                    if(url.indexOf("/")==0||url.indexOf(keyword)==0||
-                        (
-                            url.indexOf("://")!==-1&&
-                            url.indexOf("http://")!==0&&
-                            url.indexOf("https://")!==0&&
-                            url.indexOf("ftp://")!==0&&
-                            url.indexOf("file://")!==0&&
-                            url.indexOf("//")!==0
-                        )){
+                    urlParams = url.split(splitter)
+                    url = urlParams.length==1?urlParams[0]:urlParams[1]
+
+                    if(url.indexOf("/")==0||url.indexOf(keyword)==0){
 
                         handler(url,classlist,e)
 

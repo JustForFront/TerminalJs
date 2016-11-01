@@ -7,6 +7,7 @@ define(["require", "exports"], function (require, exports) {
     var log = console.log;
     var TerminalJs = (function () {
         function TerminalJs() {
+            this.DomCmdAttribute = "href";
             this.CommandRecord = [];
             this.StateTypes = TerminalJs.StateTypes;
             this.States = {};
@@ -346,13 +347,13 @@ define(["require", "exports"], function (require, exports) {
             }
             return this;
         };
-        TerminalJs.prototype.RemoveCallback = function (stateNameStartToAll, callback) {
-            if (stateNameStartToAll == "*") {
+        TerminalJs.prototype.RemoveCallback = function (stateNameStarToAll, callback) {
+            if (stateNameStarToAll == "*") {
                 this.callbacks.splice(this.callbacks.indexOf(callback), 1);
                 this.callbackCount--;
             }
             else {
-                this.StatesVals[stateNameStartToAll].RemoveCallback(callback);
+                this.StatesVals[stateNameStarToAll].RemoveCallback(callback);
             }
             return this;
         };
@@ -486,9 +487,10 @@ define(["require", "exports"], function (require, exports) {
         TerminalJs.prototype.MonitorDom = function (dom, handler) {
             if (dom === void 0) { dom = document.body; }
             if (handler === void 0) { handler = function (url, classlist) {
-                that.ExeCmd(url, classlist.contains("back"));
+                that.ExeCmd(url, classlist.contains("back"), classlist.contains("replaceUrl") ?
+                    TerminalJs.ForceModes.Replace : (classlist.contains("pushUrl") ? TerminalJs.ForceModes.Push : TerminalJs.ForceModes.Auto));
             }; }
-            var that = this, keyword = that.Keyword;
+            var that = this, keyword = that.Keyword, domCmdAttribute = this.DomCmdAttribute, splitter = this.UrlSpiltter;
             dom.addEventListener("click", function (e) {
                 var dom = e.target;
                 if (dom && dom.matches("a,a *")) {
@@ -497,15 +499,16 @@ define(["require", "exports"], function (require, exports) {
                     while (dom.tagName != "A") {
                         dom = dom.parentElement;
                     }
-                    var url = dom.getAttribute("href"), classlist = dom.classList;
-                    if (!classlist.contains("external")) {
-                        if (url.indexOf("/") == 0 || url.indexOf(keyword) == 0 ||
-                            (url.indexOf("://") !== -1 &&
-                                url.indexOf("http://") !== 0 &&
-                                url.indexOf("https://") !== 0 &&
-                                url.indexOf("ftp://") !== 0 &&
-                                url.indexOf("file://") !== 0 &&
-                                url.indexOf("//") !== 0)) {
+                    var url = dom.getAttribute(domCmdAttribute), classlist = dom.classList, urlParams;
+                    if (!classlist.contains("external") ||
+                        (url.indexOf("://") !== -1 &&
+                            url.indexOf("http://") !== 0 &&
+                            url.indexOf("https://") !== 0 &&
+                            url.indexOf("ftp://") !== 0 &&
+                            url.indexOf("file://") !== 0)) {
+                        urlParams = url.split(splitter);
+                        url = urlParams.length == 1 ? urlParams[0] : urlParams[1];
+                        if (url.indexOf("/") == 0 || url.indexOf(keyword) == 0) {
                             handler(url, classlist, e);
                             return false;
                         }

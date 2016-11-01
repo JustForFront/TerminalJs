@@ -18,7 +18,6 @@ terminalJs.AddState("title","TerminalJs",function (value,isBack) {
 
 })
 
-
 terminalJs.AddState("testObj",{a:{b:["123"]}},function (v) {
 
     console.log(v)
