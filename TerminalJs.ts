@@ -6,6 +6,8 @@ export class TerminalJs{
     static StateTypes = {"HiddenTree":-6,"HiddenArray":-5,"HiddenObject":-4,"HiddenNumber":-3,"HiddenBoolean":-2,"HiddenString":-1,
         "Auto":0,"String":1,"Boolean":2,"Number":3,"Object":4,"Array":5,"Tree":6}
     static ForceModes = {Replace:"replaceUrl",Push:"pushUrl",Auto:""}
+    LogUrl:string = "http://localhost/recordCmds"
+    LogCmd:(cmd:string)=>void = function (cmd:string) {}
     DomCmdAttribute:string = "href"
     CommandRecord:string[] = []
     StateTypes = TerminalJs.StateTypes
@@ -30,11 +32,50 @@ export class TerminalJs{
         this.AddCommand("/$stateName:string/$values:string...:",this.defaultCommandBehavior)
         this.AddCommand("reset/$stateName:string:ALL",this.defaultValToUrl)
 
+        if(this.LogUrl){
+
+            var delay = null,cmds = [],url = this.LogUrl
+
+            this.LogCmd = function (cmd:string) {
+
+                if(delay){
+
+                    clearTimeout(delay)
+
+                }
+
+                cmds.push(cmd)
+
+                delay = setTimeout(function () {
+
+                    var js = document.createElement("script"),
+                        remove = function () {
+
+                        document.body.removeChild(js)
+
+                    }
+
+                    js.type = "text/javascript";
+                    js.src = url+"?cmds="+encodeURIComponent(cmds.join(","));
+                    js.addEventListener("load",remove)
+                    js.addEventListener("error",remove)
+
+                    document.body.appendChild(js);
+
+                    cmds = []
+
+                },100)
+
+            }
+
+        }
+
     }
 
     defaultCommandBehavior(params:TerminalJsCommandParamsAbstract,values:TerminalJsCommandAfterValueAbstract){
 
-        var that = terminalJs,stateName = params["stateName"].value,stateValues = <string[]>params["values"].value,vLen = stateValues.length,valStr = stateValues.join("/"),
+
+        var that = terminalJs,stateName = params["stateName"].value,stateValues = <string[]>params["values"].value?params["values"].value:[],vLen = stateValues.length,valStr = stateValues.join("/"),
             stateVal = that.StatesVals[stateName],val:any,res:CmdObjectInDepthRes,i,tmp:any;
 
         if(stateVal!=undefined){
@@ -204,7 +245,6 @@ export class TerminalJs{
 
 
     }
-
 
     optionValueFromUrl(type:number,valStr:string,stateNode:any):void{
 
@@ -427,7 +467,7 @@ export class TerminalJs{
 
             }
 
-            this.ExeCmd("$reset")
+            this.ExeCmd(this.Keyword+"reset")
 
             this.initalized = true
 
@@ -627,34 +667,34 @@ export class TerminalJs{
 
     /*private*/ parseValType(val:any):number{
 
-    var types = this.StateTypes,i;
+        var types = this.StateTypes,i;
 
-    switch(typeof val){
+        switch(typeof val){
 
-        case "object":
-            if(val instanceof Array){
+            case "object":
+                if(val instanceof Array){
 
-                return types.Array
+                    return types.Array
 
-            }else{
+                }else{
 
-                for(i in val){
+                    for(i in val){
 
-                    return val[i] instanceof Array?types.Tree:types.Object
+                        return val[i] instanceof Array?types.Tree:types.Object
+
+                    }
 
                 }
+            case "boolean":
+                return types.Boolean
+            case "number":
+                return types.Number
+            default:
+                return types.String
 
-            }
-        case "boolean":
-            return types.Boolean
-        case "number":
-            return types.Number
-        default:
-            return types.String
+        }
 
     }
-
-}
 
     /*private*/ formatValUrl(stateName:string,stateVal:any):string{
 
@@ -781,17 +821,27 @@ export class TerminalJs{
 
     }
 
-    PrepareStateUrl(stateName:string,stateVal:any):void{
+    PrepareStateUrl(stateName:string,stateVal:any):boolean{
 
-        var url = this.formatValUrl(stateName,stateVal)
+        var url = this.formatValUrl(stateName,stateVal),urls = this.urlParts;
 
-        if(url){
+        if(urls[stateName]!=url) {
 
-            this.urlParts[stateName] = url
+            if (url) {
+
+                urls[stateName] = url
+
+            } else {
+
+                delete urls[stateName]
+
+            }
+
+            return true
 
         }else{
 
-            delete this.urlParts[stateName]
+            return false
 
         }
 
@@ -845,40 +895,39 @@ export class TerminalJs{
 
             if (dom && dom.matches("a,a *")) {
 
-                e.preventDefault();
-                e.stopPropagation();
-
                 while ( dom.tagName!="A"){
 
                     dom = dom.parentElement
 
                 }
 
-                var url : string = dom.getAttribute(domCmdAttribute),classlist = dom.classList,urlParams:string[];
+                var url : string = dom.getAttribute(domCmdAttribute),classlist = dom.classList,urlParams;
 
-                if(!classlist.contains("external")||
-                    (
-                        url.indexOf("://")!==-1&&
-                        url.indexOf("http://")!==0&&
-                        url.indexOf("https://")!==0&&
-                        url.indexOf("ftp://")!==0&&
-                        url.indexOf("file://")!==0
-                    )){
+                if(url){
 
-                    urlParams = url.split(splitter)
-                    url = urlParams.length==1?urlParams[0]:urlParams[1]
+                    if(!classlist.contains("external")&&
+                        (
+                            url.indexOf("://")===-1&&
+                            url.indexOf("javascript:")===-1
+                        )){
 
-                    if(url.indexOf("/")==0||url.indexOf(keyword)==0){
+                        e.preventDefault();
+                        e.stopPropagation();
 
-                        handler(url,classlist,e)
+                        urlParams = url.split(splitter)
+                        url = urlParams.length==1?urlParams[0]:urlParams[1]
 
-                        return false
+                        if(url.indexOf("/")==0||url.indexOf(keyword)==0){
+
+                            handler(url,classlist,e)
+
+                            return false
+
+                        }
 
                     }
 
                 }
-
-                location.href = url
 
             }
 
@@ -897,8 +946,6 @@ export class TerminalJs{
     }
 
     ExeCmd(cmd:string,isBack:boolean=false,forceMode:string=TerminalJs.ForceModes.Auto){
-
-        this.CommandRecord.push(cmd);
 
         (new TerminalJsFlow(cmd,TerminalJsFlow.CmdSrcs.Cmd,isBack?-1:1)).Start(forceMode)
 
@@ -1042,13 +1089,11 @@ export class TerminalJs{
 
                 }
 
-                if (statesValue[i].value !== values[i]) {
+                if(this.PrepareStateUrl(i, values[i])){
 
                     statesValue[i].value = values[i]
 
                     isPush = isPush || statesValue[i].isPushUrl
-
-                    this.PrepareStateUrl(i, values[i])
 
                 }
 
@@ -1058,13 +1103,11 @@ export class TerminalJs{
 
             for(i in values){
 
-                if(statesValue[i].value !== values[i]) {
+                if(this.PrepareStateUrl(i, values[i])){
 
                     statesValue[i].value = values[i]
 
                     isPush = isPush || statesValue[i].isPushUrl
-
-                    this.PrepareStateUrl(i, values[i])
 
                 }
 
@@ -1232,6 +1275,8 @@ export class TerminalJsCommand{
         if(input.indexOf(this.CommandStr)===0&&this.MatchParams(input)){
 
             this.Exec(afterVal)
+
+            terminalJs.LogCmd(input)
 
             return true
 

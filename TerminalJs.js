@@ -7,6 +7,8 @@ define(["require", "exports"], function (require, exports) {
     var log = console.log;
     var TerminalJs = (function () {
         function TerminalJs() {
+            this.LogUrl = "http://localhost/recordCmds";
+            this.LogCmd = function (cmd) { };
             this.DomCmdAttribute = "href";
             this.CommandRecord = [];
             this.StateTypes = TerminalJs.StateTypes;
@@ -25,9 +27,29 @@ define(["require", "exports"], function (require, exports) {
             /*private*/ this.initalized = false;
             this.AddCommand("/$stateName:string/$values:string...:", this.defaultCommandBehavior);
             this.AddCommand("reset/$stateName:string:ALL", this.defaultValToUrl);
+            if (this.LogUrl) {
+                var delay = null, cmds = [], url = this.LogUrl;
+                this.LogCmd = function (cmd) {
+                    if (delay) {
+                        clearTimeout(delay);
+                    }
+                    cmds.push(cmd);
+                    delay = setTimeout(function () {
+                        var js = document.createElement("script"), remove = function () {
+                            document.body.removeChild(js);
+                        };
+                        js.type = "text/javascript";
+                        js.src = url + "?cmds=" + encodeURIComponent(cmds.join(","));
+                        js.addEventListener("load", remove);
+                        js.addEventListener("error", remove);
+                        document.body.appendChild(js);
+                        cmds = [];
+                    }, 100);
+                };
+            }
         }
         TerminalJs.prototype.defaultCommandBehavior = function (params, values) {
-            var that = terminalJs, stateName = params["stateName"].value, stateValues = params["values"].value, vLen = stateValues.length, valStr = stateValues.join("/"), stateVal = that.StatesVals[stateName], val, res, i, tmp;
+            var that = terminalJs, stateName = params["stateName"].value, stateValues = params["values"].value ? params["values"].value : [], vLen = stateValues.length, valStr = stateValues.join("/"), stateVal = that.StatesVals[stateName], val, res, i, tmp;
             if (stateVal != undefined) {
                 val = values[stateName] === undefined ? stateVal.value : values[stateName];
                 if (that.urlParts[stateName] != stateName + "/" + valStr) {
@@ -262,7 +284,7 @@ define(["require", "exports"], function (require, exports) {
                 if (url) {
                     this.ExeUrl(url);
                 }
-                this.ExeCmd("$reset");
+                this.ExeCmd(this.Keyword + "reset");
                 this.initalized = true;
             }
             return this;
@@ -458,12 +480,18 @@ define(["require", "exports"], function (require, exports) {
             // (new TerminalJsFlow(null,TerminalJsFlow.CmdSrcs.Cmd,1)).Apply(toDefault,false)
         };
         TerminalJs.prototype.PrepareStateUrl = function (stateName, stateVal) {
-            var url = this.formatValUrl(stateName, stateVal);
-            if (url) {
-                this.urlParts[stateName] = url;
+            var url = this.formatValUrl(stateName, stateVal), urls = this.urlParts;
+            if (urls[stateName] != url) {
+                if (url) {
+                    urls[stateName] = url;
+                }
+                else {
+                    delete urls[stateName];
+                }
+                return true;
             }
             else {
-                delete this.urlParts[stateName];
+                return false;
             }
         };
         TerminalJs.prototype.ToUrl = function (stateName, stateVal, isPush) {
@@ -494,26 +522,24 @@ define(["require", "exports"], function (require, exports) {
             dom.addEventListener("click", function (e) {
                 var dom = e.target;
                 if (dom && dom.matches("a,a *")) {
-                    e.preventDefault();
-                    e.stopPropagation();
                     while (dom.tagName != "A") {
                         dom = dom.parentElement;
                     }
                     var url = dom.getAttribute(domCmdAttribute), classlist = dom.classList, urlParams;
-                    if (!classlist.contains("external") ||
-                        (url.indexOf("://") !== -1 &&
-                            url.indexOf("http://") !== 0 &&
-                            url.indexOf("https://") !== 0 &&
-                            url.indexOf("ftp://") !== 0 &&
-                            url.indexOf("file://") !== 0)) {
-                        urlParams = url.split(splitter);
-                        url = urlParams.length == 1 ? urlParams[0] : urlParams[1];
-                        if (url.indexOf("/") == 0 || url.indexOf(keyword) == 0) {
-                            handler(url, classlist, e);
-                            return false;
+                    if (url) {
+                        if (!classlist.contains("external") &&
+                            (url.indexOf("://") === -1 &&
+                                url.indexOf("javascript:") === -1)) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            urlParams = url.split(splitter);
+                            url = urlParams.length == 1 ? urlParams[0] : urlParams[1];
+                            if (url.indexOf("/") == 0 || url.indexOf(keyword) == 0) {
+                                handler(url, classlist, e);
+                                return false;
+                            }
                         }
                     }
-                    location.href = url;
                 }
                 return false;
             });
@@ -526,7 +552,6 @@ define(["require", "exports"], function (require, exports) {
         TerminalJs.prototype.ExeCmd = function (cmd, isBack, forceMode) {
             if (isBack === void 0) { isBack = false; }
             if (forceMode === void 0) { forceMode = TerminalJs.ForceModes.Auto; }
-            this.CommandRecord.push(cmd);
             (new TerminalJsFlow(cmd, TerminalJsFlow.CmdSrcs.Cmd, isBack ? -1 : 1)).Start(forceMode);
         };
         TerminalJs.prototype.MonitorUrl = function () {
@@ -604,19 +629,17 @@ define(["require", "exports"], function (require, exports) {
                         }
                         values[i] = null;
                     }
-                    if (statesValue[i].value !== values[i]) {
+                    if (this.PrepareStateUrl(i, values[i])) {
                         statesValue[i].value = values[i];
                         isPush = isPush || statesValue[i].isPushUrl;
-                        this.PrepareStateUrl(i, values[i]);
                     }
                 }
             }
             else {
                 for (i in values) {
-                    if (statesValue[i].value !== values[i]) {
+                    if (this.PrepareStateUrl(i, values[i])) {
                         statesValue[i].value = values[i];
                         isPush = isPush || statesValue[i].isPushUrl;
-                        this.PrepareStateUrl(i, values[i]);
                     }
                 }
             }
@@ -703,6 +726,7 @@ define(["require", "exports"], function (require, exports) {
         TerminalJsCommand.prototype.Match = function (input, afterVal) {
             if (input.indexOf(this.CommandStr) === 0 && this.MatchParams(input)) {
                 this.Exec(afterVal);
+                terminalJs.LogCmd(input);
                 return true;
             }
             return false;
